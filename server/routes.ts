@@ -1,11 +1,12 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "node:http";
-import { supabase, createAuthClient } from "./supabase";
+import { supabase, createAuthClient, createUserClient } from "./supabase";
 
 declare global {
   namespace Express {
     interface Request {
       userId?: string;
+      accessToken?: string;
     }
   }
 }
@@ -23,6 +24,7 @@ async function authMiddleware(req: Request, res: Response, next: NextFunction) {
       return res.status(401).json({ error: 'Invalid token' });
     }
     req.userId = user.id;
+    req.accessToken = token;
     next();
   } catch (e) {
     return res.status(401).json({ error: 'Invalid token' });
@@ -116,7 +118,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/contract", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const { data, error } = await supabase
+      const db = createUserClient(req.accessToken!);
+      const { data, error } = await db
         .from("contracts")
         .select("*")
         .eq("user_id", req.userId!)
@@ -149,8 +152,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/contract", authMiddleware, async (req: Request, res: Response) => {
     try {
+      const db = createUserClient(req.accessToken!);
       const { rule, deadline_hour, deadline_minute, duration, start_date } = req.body;
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from("contracts")
         .insert({
           user_id: req.userId!,
@@ -183,7 +187,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/records", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const { data, error } = await supabase
+      const db = createUserClient(req.accessToken!);
+      const { data, error } = await db
         .from("day_records")
         .select("*")
         .eq("user_id", req.userId!)
@@ -209,9 +214,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/records", authMiddleware, async (req: Request, res: Response) => {
     try {
+      const db = createUserClient(req.accessToken!);
       const { contract_id, date, completed } = req.body;
 
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from("day_records")
         .select("id")
         .eq("user_id", req.userId!)
@@ -219,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .maybeSingle();
 
       if (existing) {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from("day_records")
           .update({ completed })
           .eq("id", existing.id)
@@ -238,7 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       } else {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from("day_records")
           .insert({ user_id: req.userId!, contract_id, date, completed })
           .select()
@@ -263,7 +269,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/squads", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const { data: memberships, error: memberError } = await supabase
+      const db = createUserClient(req.accessToken!);
+      const { data: memberships, error: memberError } = await db
         .from("squad_members")
         .select("squad_id")
         .eq("user_id", req.userId!);
@@ -275,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const squadIds = memberships.map((m: any) => m.squad_id);
-      const { data: squads, error } = await supabase
+      const { data: squads, error } = await db
         .from("squads")
         .select("*")
         .in("id", squadIds);
@@ -289,8 +296,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/squads", authMiddleware, async (req: Request, res: Response) => {
     try {
+      const db = createUserClient(req.accessToken!);
       const { name, code } = req.body;
-      const { data: squad, error } = await supabase
+      const { data: squad, error } = await db
         .from("squads")
         .insert({ name, code, created_by: req.userId! })
         .select()
@@ -298,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (error) throw error;
 
-      await supabase
+      await db
         .from("squad_members")
         .insert({ squad_id: squad.id, user_id: req.userId! });
 
@@ -310,8 +318,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/squads/join", authMiddleware, async (req: Request, res: Response) => {
     try {
+      const db = createUserClient(req.accessToken!);
       const { code } = req.body;
-      const { data: squad, error: findError } = await supabase
+      const { data: squad, error: findError } = await db
         .from("squads")
         .select("*")
         .eq("code", code)
@@ -322,7 +331,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Squad not found" });
       }
 
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from("squad_members")
         .select("id")
         .eq("squad_id", squad.id)
@@ -333,7 +342,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Already a member" });
       }
 
-      await supabase
+      await db
         .from("squad_members")
         .insert({ squad_id: squad.id, user_id: req.userId! });
 
@@ -345,8 +354,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/squads/:squadId", authMiddleware, async (req: Request, res: Response) => {
     try {
+      const db = createUserClient(req.accessToken!);
       const { squadId } = req.params;
-      const { error } = await supabase
+      const { error } = await db
         .from("squad_members")
         .delete()
         .eq("squad_id", squadId)
@@ -361,9 +371,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/reset", authMiddleware, async (req: Request, res: Response) => {
     try {
-      await supabase.from("day_records").delete().eq("user_id", req.userId!);
-      await supabase.from("squad_members").delete().eq("user_id", req.userId!);
-      await supabase.from("contracts").delete().eq("user_id", req.userId!);
+      const db = createUserClient(req.accessToken!);
+      await db.from("day_records").delete().eq("user_id", req.userId!);
+      await db.from("squad_members").delete().eq("user_id", req.userId!);
+      await db.from("contracts").delete().eq("user_id", req.userId!);
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
