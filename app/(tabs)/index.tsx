@@ -1,25 +1,64 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, Pressable, Platform } from "react-native";
+import { StyleSheet, Text, View, Pressable, Platform, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withSequence, withTiming } from "react-native-reanimated";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { useRigor } from "@/lib/rigor-context";
 import { useI18n } from "@/lib/i18n";
 
+const LAST_CHECK_KEY = "@rigor_last_failure_check";
+
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
-  const { contract, markDone, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getDaysRemaining, getCurrentDeadline, isTodayCompleted } = useRigor();
+  const { contract, markDone, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getDaysRemaining, getCurrentDeadline, isTodayCompleted, dayRecords } = useRigor();
   const { t, language } = useI18n();
   const [currentTime, setCurrentTime] = useState(new Date());
   const buttonScale = useSharedValue(1);
+  const [showFailureModal, setShowFailureModal] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    if (!contract) return;
+    checkYesterdayFailure();
+  }, [contract, dayRecords]);
+
+  const checkYesterdayFailure = async () => {
+    if (!contract) return;
+    const today = new Date();
+    const todayStr = today.toISOString().split("T")[0];
+
+    const lastCheck = await AsyncStorage.getItem(LAST_CHECK_KEY);
+    if (lastCheck === todayStr) return;
+
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    const contractStart = contract.start_date;
+    if (yesterdayStr < contractStart) return;
+
+    const yesterdayRecord = dayRecords.find((r) => r.date === yesterdayStr);
+    if (!yesterdayRecord) {
+      setShowFailureModal(true);
+    }
+  };
+
+  const handleFailureResponse = async (completed: boolean) => {
+    const todayStr = new Date().toISOString().split("T")[0];
+    await AsyncStorage.setItem(LAST_CHECK_KEY, todayStr);
+    setShowFailureModal(false);
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
+  };
 
   const dayNumber = getDayNumber();
   const completed = getCompletedCount();
@@ -130,6 +169,33 @@ export default function TodayScreen() {
           </Pressable>
         </Animated.View>
       )}
+
+      <Modal visible={showFailureModal} animationType="fade" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.failureModal}>
+            <Text style={styles.failureLogo}>RIGOR</Text>
+
+            <Text style={styles.failureTitle}>{(t.today as any).newDay}</Text>
+            <Text style={styles.failureQuestion}>{(t.today as any).newDayQuestion}</Text>
+
+            <Pressable
+              style={({ pressed }) => [styles.failureYesButton, pressed && { opacity: 0.9 }]}
+              onPress={() => handleFailureResponse(true)}
+            >
+              <Text style={styles.failureYesText}>{(t.today as any).yesCompleted}</Text>
+            </Pressable>
+
+            <Pressable
+              style={({ pressed }) => [styles.failureNoButton, pressed && { opacity: 0.9 }]}
+              onPress={() => handleFailureResponse(false)}
+            >
+              <Text style={styles.failureNoText}>{(t.today as any).noFailed}</Text>
+            </Pressable>
+
+            <Text style={styles.failureHint}>{(t.today as any).beHonest}</Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -301,5 +367,76 @@ const styles = StyleSheet.create({
     fontFamily: "Rubik_700Bold",
     fontSize: 16,
     color: "#fff",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 28,
+  },
+  failureModal: {
+    backgroundColor: Colors.light.surface,
+    borderRadius: 24,
+    padding: 32,
+    width: "100%",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: Colors.light.primary,
+  },
+  failureLogo: {
+    fontFamily: "Rubik_800ExtraBold",
+    fontSize: 22,
+    color: Colors.light.primary,
+    letterSpacing: 2,
+    marginBottom: 20,
+  },
+  failureTitle: {
+    fontFamily: "Rubik_700Bold",
+    fontSize: 24,
+    color: Colors.light.text,
+    marginBottom: 8,
+  },
+  failureQuestion: {
+    fontFamily: "Rubik_400Regular",
+    fontSize: 15,
+    color: Colors.light.textSecondary,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  failureYesButton: {
+    backgroundColor: Colors.light.primary,
+    width: "100%",
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  failureYesText: {
+    fontFamily: "Rubik_700Bold",
+    fontSize: 17,
+    color: "#fff",
+  },
+  failureNoButton: {
+    backgroundColor: Colors.light.surface,
+    width: "100%",
+    borderRadius: 14,
+    paddingVertical: 18,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: Colors.light.border,
+    marginBottom: 16,
+  },
+  failureNoText: {
+    fontFamily: "Rubik_600SemiBold",
+    fontSize: 16,
+    color: Colors.light.text,
+  },
+  failureHint: {
+    fontFamily: "Rubik_400Regular",
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+    textAlign: "center",
   },
 });
