@@ -10,6 +10,7 @@ import Colors from "@/constants/colors";
 import { useRigor } from "@/lib/rigor-context";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n, Language } from "@/lib/i18n";
+import ProUpgradeModal from "@/components/ProUpgradeModal";
 
 const NOTIFICATIONS_KEY = "@rigor_notifications";
 const DIFFICULTY_KEY = "@rigor_difficulty";
@@ -41,6 +42,7 @@ export default function ProfileScreen() {
   const [showDifficulty, setShowDifficulty] = useState(false);
   const [difficulty, setDifficultyState] = useState<Difficulty>("medium");
   const [resetCount, setResetCount] = useState(0);
+  const [showProModal, setShowProModal] = useState(false);
   const isPro = false;
 
   const completed = getCompletedCount();
@@ -80,7 +82,9 @@ export default function ProfileScreen() {
   };
 
   const handleSetDifficulty = async (d: Difficulty) => {
-    if (d !== "medium" && DIFFICULTY_OPTIONS.find(o => o.key === d)?.pro) {
+    if (d !== "medium" && DIFFICULTY_OPTIONS.find(o => o.key === d)?.pro && !isPro) {
+      setShowDifficulty(false);
+      setShowProModal(true);
       return;
     }
     setDifficultyState(d);
@@ -135,7 +139,7 @@ export default function ProfileScreen() {
 
   const handleResetProgress = () => {
     if (!canResetProgress) {
-      Alert.alert(t.profile.resetProgressTitle, (t.profile as any).noResetsLeft);
+      setShowProModal(true);
       return;
     }
     Alert.alert(
@@ -189,6 +193,7 @@ export default function ProfileScreen() {
   const languageLabel = language === "en" ? t.profile.english : t.profile.portuguese;
 
   return (
+    <>
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingTop: Platform.OS === 'web' ? 67 : insets.top + 16, paddingBottom: 120 }}
@@ -447,6 +452,8 @@ export default function ProfileScreen() {
         </Pressable>
       </Modal>
     </ScrollView>
+    <ProUpgradeModal visible={showProModal} onClose={() => setShowProModal(false)} />
+    </>
   );
 }
 
