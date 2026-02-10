@@ -43,14 +43,25 @@ Preferred communication style: Simple, everyday language.
 ### Data Layer
 
 - **Primary Storage**: Supabase (PostgreSQL) — contracts, day records, squads all managed through Supabase client on the server
+- **RLS (Row Level Security)**: Supabase tables have RLS enabled. The server creates per-request authenticated Supabase clients using `createUserClient(accessToken)` to pass the user's JWT, ensuring RLS policies are satisfied
+- **Supabase RPC**: Day record creation uses `mark_day_complete(p_contract_id)` stored procedure instead of direct INSERT (RLS blocks direct inserts)
+- **Actual Supabase Table Columns**:
+  - `contracts`: id, user_id, rule, deadline_hour, deadline_minute, duration_days, started_at, ends_at, status, created_at
+  - `day_records`: id, user_id, contract_id, date, completed, created_at
+  - `squads`: id, name, code, created_by, created_at
+  - `squad_members`: id, squad_id, user_id, joined_at
+- **Column Mapping** (server transforms between frontend model and Supabase):
+  - Frontend `duration` ↔ Supabase `duration_days`
+  - Frontend `start_date` ↔ Supabase `started_at` (normalized to YYYY-MM-DD)
+  - Frontend `signed` ↔ Supabase `status` = "active"
+  - Frontend `failed`/`critical`/`justification` derived from `completed` boolean
 - **Schema Definition**: Drizzle ORM schema in `shared/schema.ts` with `drizzle-zod` for validation. Supabase tables use `user_id` column (not `device_id`) to link data to authenticated users
-- **In-Memory Fallback**: `server/storage.ts` has a `MemStorage` class (likely legacy/placeholder)
 - **Drizzle Config**: Points to `DATABASE_URL` env var for PostgreSQL, migrations output to `./migrations/`
 
 ### Key Domain Concepts
 
-- **Contract**: A commitment with a rule, deadline time (hour:minute), duration (14/30/66 days), and start date. Once signed, it's irreversible
-- **Day Record**: Daily entry tracking completion/failure/critical status with optional justification
+- **Contract**: A commitment with a rule, deadline time (hour:minute), duration (14/30/66 days), and start date. Once signed, it's irreversible. Requires `ends_at` computed as `started_at + duration_days`
+- **Day Record**: Daily entry tracking completion status. Only `completed` boolean stored in DB; `failed`/`critical`/`justification` are derived on the server
 - **Squad**: Accountability group with shareable join codes
 - **Trophies**: Achievement system based on completion milestones (1 to 66 days, zero-fail contracts, multiple contracts)
 
