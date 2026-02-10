@@ -120,13 +120,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from("contracts")
         .select("*")
         .eq("user_id", req.userId!)
-        .eq("signed", true)
+        .eq("status", "active")
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (error) throw error;
-      res.json({ contract: data });
+
+      if (data) {
+        res.json({
+          contract: {
+            id: data.id,
+            rule: data.rule,
+            deadline_hour: data.deadline_hour,
+            deadline_minute: data.deadline_minute,
+            duration: data.duration_days,
+            start_date: data.started_at,
+            signed: true,
+          }
+        });
+      } else {
+        res.json({ contract: null });
+      }
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -142,15 +157,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           rule,
           deadline_hour,
           deadline_minute,
-          duration,
-          start_date,
-          signed: true,
+          duration_days: duration,
+          started_at: start_date,
+          status: "active",
         })
         .select()
         .single();
 
       if (error) throw error;
-      res.json({ contract: data });
+      res.json({
+        contract: {
+          id: data.id,
+          rule: data.rule,
+          deadline_hour: data.deadline_hour,
+          deadline_minute: data.deadline_minute,
+          duration: data.duration_days,
+          start_date: data.started_at,
+          signed: true,
+        }
+      });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -165,7 +190,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .order("date", { ascending: true });
 
       if (error) throw error;
-      res.json({ records: data || [] });
+
+      const records = (data || []).map((r: any) => ({
+        id: r.id,
+        contract_id: r.contract_id,
+        date: r.date,
+        completed: r.completed,
+        failed: !r.completed,
+        critical: false,
+        justification: null,
+      }));
+
+      res.json({ records });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -173,7 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/records", authMiddleware, async (req: Request, res: Response) => {
     try {
-      const { contract_id, date, completed, failed, critical, justification } = req.body;
+      const { contract_id, date, completed } = req.body;
 
       const { data: existing } = await supabase
         .from("day_records")
@@ -185,20 +221,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (existing) {
         const { data, error } = await supabase
           .from("day_records")
-          .update({ completed, failed, critical, justification })
+          .update({ completed })
           .eq("id", existing.id)
           .select()
           .single();
         if (error) throw error;
-        res.json({ record: data });
+        res.json({
+          record: {
+            id: data.id,
+            contract_id: data.contract_id,
+            date: data.date,
+            completed: data.completed,
+            failed: !data.completed,
+            critical: false,
+            justification: null,
+          }
+        });
       } else {
         const { data, error } = await supabase
           .from("day_records")
-          .insert({ user_id: req.userId!, contract_id, date, completed, failed, critical, justification })
+          .insert({ user_id: req.userId!, contract_id, date, completed })
           .select()
           .single();
         if (error) throw error;
-        res.json({ record: data });
+        res.json({
+          record: {
+            id: data.id,
+            contract_id: data.contract_id,
+            date: data.date,
+            completed: data.completed,
+            failed: !data.completed,
+            critical: false,
+            justification: null,
+          }
+        });
       }
     } catch (e: any) {
       res.status(500).json({ error: e.message });
