@@ -6,10 +6,12 @@ import { Feather } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n";
 
 export default function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { login } = useAuth();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -50,8 +52,8 @@ export default function LoginScreen() {
             <Text style={styles.brandTagline}>Discipline. Tracked.</Text>
           </View>
 
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to your account</Text>
+          <Text style={styles.title}>{t.auth.loginTitle}</Text>
+          <Text style={styles.subtitle}>{t.auth.loginSubtitle}</Text>
 
           {!!error && (
             <View style={styles.errorBox}>
@@ -64,7 +66,7 @@ export default function LoginScreen() {
             <Feather name="mail" size={18} color={Colors.light.textTertiary} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder={t.auth.email}
               placeholderTextColor={Colors.light.textTertiary}
               value={email}
               onChangeText={setEmail}
@@ -79,7 +81,7 @@ export default function LoginScreen() {
             <Feather name="lock" size={18} color={Colors.light.textTertiary} style={styles.inputIcon} />
             <TextInput
               style={[styles.input, { flex: 1 }]}
-              placeholder="Password"
+              placeholder={t.auth.password}
               placeholderTextColor={Colors.light.textTertiary}
               value={password}
               onChangeText={setPassword}
@@ -93,7 +95,7 @@ export default function LoginScreen() {
           </View>
 
           <Pressable onPress={() => router.push("/(auth)/forgot-password")} style={styles.forgotLink}>
-            <Text style={styles.forgotText}>Forgot password?</Text>
+            <Text style={styles.forgotText}>{t.auth.forgotPassword}</Text>
           </Pressable>
 
           <Pressable
@@ -105,14 +107,14 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.loginButtonText}>Sign In</Text>
+              <Text style={styles.loginButtonText}>{t.auth.login}</Text>
             )}
           </Pressable>
 
           <View style={styles.signupRow}>
-            <Text style={styles.signupLabel}>Don't have an account?</Text>
+            <Text style={styles.signupLabel}>{t.auth.noAccount}</Text>
             <Pressable onPress={() => router.push("/(auth)/signup")} testID="go-to-signup">
-              <Text style={styles.signupLink}>Sign Up</Text>
+              <Text style={styles.signupLink}>{t.auth.signup}</Text>
             </Pressable>
           </View>
         </Animated.View>

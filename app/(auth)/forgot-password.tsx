@@ -6,10 +6,12 @@ import { Feather } from "@expo/vector-icons";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n";
 
 export default function ForgotPasswordScreen() {
   const insets = useSafeAreaInsets();
   const { forgotPassword } = useAuth();
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,7 +46,7 @@ export default function ForgotPasswordScreen() {
           style={({ pressed }) => [styles.submitButton, pressed && { opacity: 0.85 }]}
           onPress={() => router.replace("/(auth)/login")}
         >
-          <Text style={styles.submitButtonText}>Back to Login</Text>
+          <Text style={styles.submitButtonText}>{t.auth.backToLogin}</Text>
         </Pressable>
       </View>
     );
@@ -75,10 +77,8 @@ export default function ForgotPasswordScreen() {
             </View>
           </View>
 
-          <Text style={styles.title}>Reset password</Text>
-          <Text style={styles.subtitle}>
-            Enter your email and we'll send you a link to reset your password.
-          </Text>
+          <Text style={styles.title}>{t.auth.forgotTitle}</Text>
+          <Text style={styles.subtitle}>{t.auth.forgotSubtitle}</Text>
 
           {!!error && (
             <View style={styles.errorBox}>
@@ -91,7 +91,7 @@ export default function ForgotPasswordScreen() {
             <Feather name="mail" size={18} color={Colors.light.textTertiary} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
-              placeholder="Email"
+              placeholder={t.auth.email}
               placeholderTextColor={Colors.light.textTertiary}
               value={email}
               onChangeText={setEmail}
@@ -112,7 +112,7 @@ export default function ForgotPasswordScreen() {
             {loading ? (
               <ActivityIndicator color="#fff" size="small" />
             ) : (
-              <Text style={styles.submitButtonText}>Send Reset Link</Text>
+              <Text style={styles.submitButtonText}>{t.auth.sendReset}</Text>
             )}
           </Pressable>
 

@@ -7,29 +7,31 @@ import { Ionicons, MaterialCommunityIcons, Feather } from "@expo/vector-icons";
 import React from "react";
 import Colors from "@/constants/colors";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n";
 
 function NativeTabLayout() {
+  const { t } = useI18n();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
         <Icon sf={{ default: "target", selected: "target" }} />
-        <Label>Today</Label>
+        <Label>{t.tabs.today}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="progress">
         <Icon sf={{ default: "chart.bar", selected: "chart.bar.fill" }} />
-        <Label>Progress</Label>
+        <Label>{t.tabs.progress}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="squads">
         <Icon sf={{ default: "person.3", selected: "person.3.fill" }} />
-        <Label>Squads</Label>
+        <Label>{t.tabs.squads}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="trophies">
         <Icon sf={{ default: "trophy", selected: "trophy.fill" }} />
-        <Label>Trophies</Label>
+        <Label>{t.tabs.trophies}</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "gearshape", selected: "gearshape.fill" }} />
-        <Label>Profile</Label>
+        <Label>{t.tabs.profile}</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
   );
@@ -38,6 +40,7 @@ function NativeTabLayout() {
 function ClassicTabLayout() {
   const isWeb = Platform.OS === "web";
   const isIOS = Platform.OS === "ios";
+  const { t } = useI18n();
 
   return (
     <Tabs
@@ -73,7 +76,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: "Today",
+          title: t.tabs.today,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="radio-button-on" size={size} color={color} />
           ),
@@ -82,7 +85,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="progress"
         options={{
-          title: "Progress",
+          title: t.tabs.progress,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid" size={size} color={color} />
           ),
@@ -91,7 +94,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="squads"
         options={{
-          title: "Squads",
+          title: t.tabs.squads,
           tabBarIcon: ({ color, size }) => (
             <MaterialCommunityIcons name="account-group" size={size} color={color} />
           ),
@@ -100,7 +103,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="trophies"
         options={{
-          title: "Trophies",
+          title: t.tabs.trophies,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="trophy" size={size} color={color} />
           ),
@@ -109,7 +112,7 @@ function ClassicTabLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t.tabs.profile,
           tabBarIcon: ({ color, size }) => (
             <Feather name="settings" size={size} color={color} />
           ),
