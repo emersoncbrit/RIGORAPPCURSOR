@@ -418,6 +418,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.delete("/api/reset-progress", authMiddleware, async (req: Request, res: Response) => {
+    try {
+      const db = createUserClient(req.accessToken!);
+      await db.from("day_records").delete().eq("user_id", req.userId!);
+      await db.from("contracts").delete().eq("user_id", req.userId!);
+      res.json({ success: true });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.delete("/api/reset", authMiddleware, async (req: Request, res: Response) => {
     try {
       const db = createUserClient(req.accessToken!);

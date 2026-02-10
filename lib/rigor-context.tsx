@@ -52,6 +52,7 @@ interface RigorContextValue {
   isTodayFailed: () => boolean;
   getTodayRecord: () => DayRecord | undefined;
   resetAll: () => Promise<void>;
+  resetProgress: () => Promise<boolean>;
   refreshData: () => Promise<void>;
 }
 
@@ -316,6 +317,19 @@ export function RigorProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated]);
 
+  const resetProgress = useCallback(async (): Promise<boolean> => {
+    if (!isAuthenticated) return false;
+    try {
+      await apiRequest('DELETE', '/api/reset-progress');
+      setContract(null);
+      setDayRecords([]);
+      return true;
+    } catch (e) {
+      console.error('Failed to reset progress:', e);
+      return false;
+    }
+  }, [isAuthenticated]);
+
   const value = useMemo(() => ({
     contract,
     dayRecords,
@@ -338,8 +352,9 @@ export function RigorProvider({ children }: { children: ReactNode }) {
     isTodayFailed,
     getTodayRecord,
     resetAll,
+    resetProgress,
     refreshData,
-  }), [contract, dayRecords, squads, isLoading, signContract, markDone, createSquad, joinSquad, leaveSquad, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getBestStreak, getCompletionRate, getDaysRemaining, getCurrentDeadline, isTodayCompleted, isTodayFailed, getTodayRecord, resetAll, refreshData]);
+  }), [contract, dayRecords, squads, isLoading, signContract, markDone, createSquad, joinSquad, leaveSquad, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getBestStreak, getCompletionRate, getDaysRemaining, getCurrentDeadline, isTodayCompleted, isTodayFailed, getTodayRecord, resetAll, resetProgress, refreshData]);
 
   return (
     <RigorContext.Provider value={value}>
