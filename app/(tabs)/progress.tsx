@@ -27,7 +27,7 @@ export default function ProgressScreen() {
   const dots: Array<'done' | 'fail' | 'critical' | 'empty'> = [];
   if (contract) {
     for (let i = 0; i < duration; i++) {
-      const d = new Date(contract.startDate + 'T00:00:00');
+      const d = new Date(contract.start_date + 'T00:00:00');
       d.setDate(d.getDate() + i);
       const dateStr = d.toISOString().split('T')[0];
       const record = dayRecords.find(r => r.date === dateStr);

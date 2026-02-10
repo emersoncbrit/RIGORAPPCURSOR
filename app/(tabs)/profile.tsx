@@ -54,12 +54,12 @@ export default function ProfileScreen() {
           <View style={styles.contractDetail}>
             <Text style={styles.contractLabel}>Deadline</Text>
             <Text style={styles.contractValue}>
-              {contract.deadlineHour.toString().padStart(2, '0')}:{contract.deadlineMinute.toString().padStart(2, '0')}
+              {contract.deadline_hour.toString().padStart(2, '0')}:{contract.deadline_minute.toString().padStart(2, '0')}
             </Text>
           </View>
           <View style={styles.contractDetail}>
             <Text style={styles.contractLabel}>Start Date</Text>
-            <Text style={styles.contractValue}>{contract.startDate}</Text>
+            <Text style={styles.contractValue}>{contract.start_date}</Text>
           </View>
           <View style={[styles.contractDetail, { borderBottomWidth: 0 }]}>
             <Text style={styles.contractLabel}>Remaining</Text>

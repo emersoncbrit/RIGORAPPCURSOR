@@ -34,6 +34,7 @@ export default function TodayScreen() {
   const hours = currentTime.getHours().toString().padStart(2, '0');
   const minutes = currentTime.getMinutes().toString().padStart(2, '0');
   const deadlineStr = `${deadline.hour.toString().padStart(2, '0')}:${deadline.minute.toString().padStart(2, '0')}`;
+  const ruleText = contract?.rule ?? '';
 
   const buttonAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: buttonScale.value }],

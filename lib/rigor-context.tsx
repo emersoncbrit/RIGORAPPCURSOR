@@ -1,17 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { apiRequest, getApiUrl } from '@/lib/query-client';
+import { fetch } from 'expo/fetch';
 
 export interface Contract {
   id: string;
   rule: string;
-  deadlineHour: number;
-  deadlineMinute: number;
+  deadline_hour: number;
+  deadline_minute: number;
   duration: number;
-  startDate: string;
+  start_date: string;
   signed: boolean;
 }
 
 export interface DayRecord {
+  id?: string;
   date: string;
   completed: boolean;
   failed: boolean;
@@ -23,21 +26,13 @@ export interface Squad {
   id: string;
   name: string;
   code: string;
-  createdAt: string;
-}
-
-interface RigorState {
-  contract: Contract | null;
-  dayRecords: DayRecord[];
-  squads: Squad[];
-  lockedUntil: string | null;
+  created_at: string;
 }
 
 interface RigorContextValue {
   contract: Contract | null;
   dayRecords: DayRecord[];
   squads: Squad[];
-  lockedUntil: string | null;
   isLoading: boolean;
   signContract: (rule: string, deadlineHour: number, deadlineMinute: number, duration: number) => Promise<void>;
   markDone: () => Promise<void>;
@@ -56,11 +51,16 @@ interface RigorContextValue {
   isTodayFailed: () => boolean;
   getTodayRecord: () => DayRecord | undefined;
   resetAll: () => Promise<void>;
+  refreshData: () => Promise<void>;
 }
 
-const STORAGE_KEY = '@rigor_state';
+const DEVICE_ID_KEY = '@rigor_device_id';
 
 const RigorContext = createContext<RigorContextValue | null>(null);
+
+function generateDeviceId(): string {
+  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+}
 
 function generateCode(): string {
   const chars = '0123456789abcdef';
@@ -82,152 +82,174 @@ function daysBetween(start: string, end: string): number {
 }
 
 export function RigorProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<RigorState>({
-    contract: null,
-    dayRecords: [],
-    squads: [],
-    lockedUntil: null,
-  });
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [contract, setContract] = useState<Contract | null>(null);
+  const [dayRecords, setDayRecords] = useState<DayRecord[]>([]);
+  const [squads, setSquads] = useState<Squad[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    loadState();
+    initDevice();
   }, []);
 
-  const loadState = async () => {
+  const initDevice = async () => {
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as RigorState;
-        setState(parsed);
-        checkForMissedDays(parsed);
+      let id = await AsyncStorage.getItem(DEVICE_ID_KEY);
+      if (!id) {
+        id = generateDeviceId();
+        await AsyncStorage.setItem(DEVICE_ID_KEY, id);
+      }
+      setDeviceId(id);
+    } catch (e) {
+      const id = generateDeviceId();
+      setDeviceId(id);
+    }
+  };
+
+  useEffect(() => {
+    if (deviceId) {
+      loadAllData();
+    }
+  }, [deviceId]);
+
+  const loadAllData = async () => {
+    if (!deviceId) return;
+    setIsLoading(true);
+    try {
+      const baseUrl = getApiUrl();
+
+      const [contractRes, recordsRes, squadsRes] = await Promise.all([
+        fetch(new URL(`/api/contract/${deviceId}`, baseUrl).toString(), { credentials: 'include' }),
+        fetch(new URL(`/api/records/${deviceId}`, baseUrl).toString(), { credentials: 'include' }),
+        fetch(new URL(`/api/squads/${deviceId}`, baseUrl).toString(), { credentials: 'include' }),
+      ]);
+
+      if (contractRes.ok) {
+        const contractData = await contractRes.json();
+        setContract(contractData.contract || null);
+      }
+
+      if (recordsRes.ok) {
+        const recordsData = await recordsRes.json();
+        setDayRecords(recordsData.records || []);
+      }
+
+      if (squadsRes.ok) {
+        const squadsData = await squadsRes.json();
+        setSquads(squadsData.squads || []);
       }
     } catch (e) {
-      console.error('Failed to load state:', e);
+      console.error('Failed to load data from Supabase:', e);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const saveState = async (newState: RigorState) => {
-    setState(newState);
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newState));
-    } catch (e) {
-      console.error('Failed to save state:', e);
-    }
-  };
-
-  const checkForMissedDays = (currentState: RigorState) => {
-    if (!currentState.contract) return;
-    const today = getDateStr();
-    const startDate = currentState.contract.startDate;
-    const dayNum = daysBetween(startDate, today);
-    const records = [...currentState.dayRecords];
-    let changed = false;
-
-    for (let i = 0; i < dayNum; i++) {
-      const d = new Date(startDate + 'T00:00:00');
-      d.setDate(d.getDate() + i);
-      const dateStr = getDateStr(d);
-      const existing = records.find(r => r.date === dateStr);
-      if (!existing) {
-        records.push({
-          date: dateStr,
-          completed: false,
-          failed: true,
-          critical: true,
-        });
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      const newState = { ...currentState, dayRecords: records };
-      saveState(newState);
-    }
-  };
+  const refreshData = useCallback(async () => {
+    await loadAllData();
+  }, [deviceId]);
 
   const signContract = useCallback(async (rule: string, deadlineHour: number, deadlineMinute: number, duration: number) => {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
-    const contract: Contract = {
-      id,
-      rule,
-      deadlineHour,
-      deadlineMinute,
-      duration,
-      startDate: getDateStr(),
-      signed: true,
-    };
-    const newState = { ...state, contract, dayRecords: [] };
-    await saveState(newState);
-  }, [state]);
+    if (!deviceId) return;
+    try {
+      const res = await apiRequest('POST', '/api/contract', {
+        device_id: deviceId,
+        rule,
+        deadline_hour: deadlineHour,
+        deadline_minute: deadlineMinute,
+        duration,
+        start_date: getDateStr(),
+      });
+      const data = await res.json();
+      setContract(data.contract);
+      setDayRecords([]);
+    } catch (e) {
+      console.error('Failed to sign contract:', e);
+    }
+  }, [deviceId]);
 
   const markDone = useCallback(async () => {
+    if (!deviceId || !contract) return;
     const today = getDateStr();
-    const existing = state.dayRecords.find(r => r.date === today);
-    if (existing && existing.completed) return;
-
-    const records = state.dayRecords.filter(r => r.date !== today);
-    records.push({
-      date: today,
-      completed: true,
-      failed: false,
-      critical: false,
-    });
-    const newState = { ...state, dayRecords: records };
-    await saveState(newState);
-  }, [state]);
+    try {
+      const res = await apiRequest('POST', '/api/records', {
+        device_id: deviceId,
+        contract_id: contract.id,
+        date: today,
+        completed: true,
+        failed: false,
+        critical: false,
+      });
+      const data = await res.json();
+      setDayRecords(prev => {
+        const filtered = prev.filter(r => r.date !== today);
+        return [...filtered, data.record];
+      });
+    } catch (e) {
+      console.error('Failed to mark done:', e);
+    }
+  }, [deviceId, contract]);
 
   const createSquad = useCallback(async (name: string) => {
-    const squad: Squad = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      name,
-      code: generateCode(),
-      createdAt: getDateStr(),
-    };
-    const newState = { ...state, squads: [...state.squads, squad] };
-    await saveState(newState);
-  }, [state]);
+    if (!deviceId) return;
+    try {
+      const code = generateCode();
+      const res = await apiRequest('POST', '/api/squads', {
+        device_id: deviceId,
+        name,
+        code,
+      });
+      const data = await res.json();
+      setSquads(prev => [...prev, data.squad]);
+    } catch (e) {
+      console.error('Failed to create squad:', e);
+    }
+  }, [deviceId]);
 
   const joinSquad = useCallback(async (code: string): Promise<boolean> => {
-    const existing = state.squads.find(s => s.code === code);
-    if (existing) return false;
-    const squad: Squad = {
-      id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-      name: 'Squad ' + code.substring(0, 4).toUpperCase(),
-      code,
-      createdAt: getDateStr(),
-    };
-    const newState = { ...state, squads: [...state.squads, squad] };
-    await saveState(newState);
-    return true;
-  }, [state]);
+    if (!deviceId) return false;
+    try {
+      const res = await apiRequest('POST', '/api/squads/join', {
+        device_id: deviceId,
+        code,
+      });
+      const data = await res.json();
+      setSquads(prev => [...prev, data.squad]);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }, [deviceId]);
 
   const leaveSquad = useCallback(async (id: string) => {
-    const newState = { ...state, squads: state.squads.filter(s => s.id !== id) };
-    await saveState(newState);
-  }, [state]);
+    if (!deviceId) return;
+    try {
+      await apiRequest('DELETE', `/api/squads/${id}/${deviceId}`);
+      setSquads(prev => prev.filter(s => s.id !== id));
+    } catch (e) {
+      console.error('Failed to leave squad:', e);
+    }
+  }, [deviceId]);
 
   const getDayNumber = useCallback((): number => {
-    if (!state.contract) return 0;
+    if (!contract) return 0;
     const today = getDateStr();
-    return daysBetween(state.contract.startDate, today) + 1;
-  }, [state.contract]);
+    return daysBetween(contract.start_date, today) + 1;
+  }, [contract]);
 
   const getCompletedCount = useCallback((): number => {
-    return state.dayRecords.filter(r => r.completed).length;
-  }, [state.dayRecords]);
+    return dayRecords.filter(r => r.completed).length;
+  }, [dayRecords]);
 
   const getFailedCount = useCallback((): number => {
-    return state.dayRecords.filter(r => r.failed).length;
-  }, [state.dayRecords]);
+    return dayRecords.filter(r => r.failed).length;
+  }, [dayRecords]);
 
   const getCurrentStreak = useCallback((): number => {
-    if (!state.contract) return 0;
+    if (!contract) return 0;
     let streak = 0;
     const today = getDateStr();
-    const sorted = [...state.dayRecords]
+    const sorted = [...dayRecords]
       .filter(r => r.completed)
       .sort((a, b) => b.date.localeCompare(a.date));
 
@@ -241,11 +263,11 @@ export function RigorProvider({ children }: { children: ReactNode }) {
       }
     }
     return streak;
-  }, [state.contract, state.dayRecords]);
+  }, [contract, dayRecords]);
 
   const getBestStreak = useCallback((): number => {
-    if (!state.contract || state.dayRecords.length === 0) return 0;
-    const sorted = [...state.dayRecords].sort((a, b) => a.date.localeCompare(b.date));
+    if (!contract || dayRecords.length === 0) return 0;
+    const sorted = [...dayRecords].sort((a, b) => a.date.localeCompare(b.date));
     let best = 0;
     let current = 0;
 
@@ -258,63 +280,64 @@ export function RigorProvider({ children }: { children: ReactNode }) {
       }
     }
     return best;
-  }, [state.contract, state.dayRecords]);
+  }, [contract, dayRecords]);
 
   const getCompletionRate = useCallback((): number => {
-    const total = state.dayRecords.length;
+    const total = dayRecords.length;
     if (total === 0) return 0;
-    const completed = state.dayRecords.filter(r => r.completed).length;
+    const completed = dayRecords.filter(r => r.completed).length;
     return Math.round((completed / total) * 100);
-  }, [state.dayRecords]);
+  }, [dayRecords]);
 
   const getDaysRemaining = useCallback((): number => {
-    if (!state.contract) return 0;
-    return Math.max(0, state.contract.duration - getDayNumber());
-  }, [state.contract, getDayNumber]);
+    if (!contract) return 0;
+    return Math.max(0, contract.duration - getDayNumber());
+  }, [contract, getDayNumber]);
 
   const getCurrentDeadline = useCallback((): { hour: number; minute: number } => {
-    if (!state.contract) return { hour: 23, minute: 0 };
+    if (!contract) return { hour: 23, minute: 0 };
     const streak = getCurrentStreak();
     const reductions = Math.floor(streak / 7);
-    let totalMinutes = state.contract.deadlineHour * 60 + state.contract.deadlineMinute;
+    let totalMinutes = contract.deadline_hour * 60 + contract.deadline_minute;
     totalMinutes -= reductions * 30;
     if (totalMinutes < 0) totalMinutes = 0;
     return {
       hour: Math.floor(totalMinutes / 60),
       minute: totalMinutes % 60,
     };
-  }, [state.contract, getCurrentStreak]);
+  }, [contract, getCurrentStreak]);
 
   const isTodayCompleted = useCallback((): boolean => {
     const today = getDateStr();
-    return state.dayRecords.some(r => r.date === today && r.completed);
-  }, [state.dayRecords]);
+    return dayRecords.some(r => r.date === today && r.completed);
+  }, [dayRecords]);
 
   const isTodayFailed = useCallback((): boolean => {
     const today = getDateStr();
-    return state.dayRecords.some(r => r.date === today && r.failed);
-  }, [state.dayRecords]);
+    return dayRecords.some(r => r.date === today && r.failed);
+  }, [dayRecords]);
 
   const getTodayRecord = useCallback((): DayRecord | undefined => {
     const today = getDateStr();
-    return state.dayRecords.find(r => r.date === today);
-  }, [state.dayRecords]);
+    return dayRecords.find(r => r.date === today);
+  }, [dayRecords]);
 
   const resetAll = useCallback(async () => {
-    const newState: RigorState = {
-      contract: null,
-      dayRecords: [],
-      squads: [],
-      lockedUntil: null,
-    };
-    await saveState(newState);
-  }, []);
+    if (!deviceId) return;
+    try {
+      await apiRequest('DELETE', `/api/reset/${deviceId}`);
+      setContract(null);
+      setDayRecords([]);
+      setSquads([]);
+    } catch (e) {
+      console.error('Failed to reset:', e);
+    }
+  }, [deviceId]);
 
   const value = useMemo(() => ({
-    contract: state.contract,
-    dayRecords: state.dayRecords,
-    squads: state.squads,
-    lockedUntil: state.lockedUntil,
+    contract,
+    dayRecords,
+    squads,
     isLoading,
     signContract,
     markDone,
@@ -333,7 +356,8 @@ export function RigorProvider({ children }: { children: ReactNode }) {
     isTodayFailed,
     getTodayRecord,
     resetAll,
-  }), [state, isLoading, signContract, markDone, createSquad, joinSquad, leaveSquad, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getBestStreak, getCompletionRate, getDaysRemaining, getCurrentDeadline, isTodayCompleted, isTodayFailed, getTodayRecord, resetAll]);
+    refreshData,
+  }), [contract, dayRecords, squads, isLoading, signContract, markDone, createSquad, joinSquad, leaveSquad, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getBestStreak, getCompletionRate, getDaysRemaining, getCurrentDeadline, isTodayCompleted, isTodayFailed, getTodayRecord, resetAll, refreshData]);
 
   return (
     <RigorContext.Provider value={value}>
