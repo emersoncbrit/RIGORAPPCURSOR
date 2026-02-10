@@ -4,9 +4,11 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
+import { useI18n } from "@/lib/i18n";
 
 export default function AboutScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
 
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
@@ -14,7 +16,7 @@ export default function AboutScreen() {
         <Pressable onPress={() => router.back()} style={styles.closeBtn}>
           <Feather name="x" size={24} color={Colors.light.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>About</Text>
+        <Text style={styles.headerTitle}>{t.about.title}</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -24,13 +26,10 @@ export default function AboutScreen() {
             <Feather name="target" size={36} color="#fff" />
           </View>
           <Text style={styles.appName}>RIGOR</Text>
-          <Text style={styles.version}>Version 1.0.0</Text>
+          <Text style={styles.version}>{t.about.version}</Text>
         </View>
 
-        <Text style={styles.description}>
-          RIGOR is a discipline tracking app built on commitment. Create irreversible contracts
-          with yourself, track your daily consistency, and build unbreakable habits.
-        </Text>
+        <Text style={styles.description}>{t.about.description}</Text>
 
         <View style={styles.featureList}>
           <View style={styles.featureItem}>
@@ -38,8 +37,8 @@ export default function AboutScreen() {
               <Feather name="file-text" size={18} color={Colors.light.primary} />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Irreversible Contracts</Text>
-              <Text style={styles.featureDesc}>Once signed, no editing, no pausing, no excuses</Text>
+              <Text style={styles.featureTitle}>{t.about.irreversibleContracts}</Text>
+              <Text style={styles.featureDesc}>{t.about.irreversibleContractsDesc}</Text>
             </View>
           </View>
 
@@ -48,8 +47,8 @@ export default function AboutScreen() {
               <Ionicons name="grid" size={18} color={Colors.light.success} />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Consistency Heatmap</Text>
-              <Text style={styles.featureDesc}>Visualize your discipline over time</Text>
+              <Text style={styles.featureTitle}>{t.about.consistencyHeatmap}</Text>
+              <Text style={styles.featureDesc}>{t.about.consistencyHeatmapDesc}</Text>
             </View>
           </View>
 
@@ -58,8 +57,8 @@ export default function AboutScreen() {
               <Ionicons name="people" size={18} color="#1976D2" />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Squads</Text>
-              <Text style={styles.featureDesc}>Accountability groups to keep you honest</Text>
+              <Text style={styles.featureTitle}>{t.about.squads}</Text>
+              <Text style={styles.featureDesc}>{t.about.squadsDesc}</Text>
             </View>
           </View>
 
@@ -68,8 +67,8 @@ export default function AboutScreen() {
               <Ionicons name="trophy" size={18} color="#F9A825" />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Trophies</Text>
-              <Text style={styles.featureDesc}>Earn achievements for your dedication</Text>
+              <Text style={styles.featureTitle}>{t.about.trophies}</Text>
+              <Text style={styles.featureDesc}>{t.about.trophiesDesc}</Text>
             </View>
           </View>
 
@@ -78,13 +77,13 @@ export default function AboutScreen() {
               <Ionicons name="timer" size={18} color={Colors.light.error} />
             </View>
             <View style={styles.featureText}>
-              <Text style={styles.featureTitle}>Shrinking Deadlines</Text>
-              <Text style={styles.featureDesc}>Every 7-day streak cuts 30 min from your deadline</Text>
+              <Text style={styles.featureTitle}>{t.about.shrinkingDeadlines}</Text>
+              <Text style={styles.featureDesc}>{t.about.shrinkingDeadlinesDesc}</Text>
             </View>
           </View>
         </View>
 
-        <Text style={styles.footer}>Built with discipline, for the disciplined.</Text>
+        <Text style={styles.footer}>{t.about.footer}</Text>
       </ScrollView>
     </View>
   );

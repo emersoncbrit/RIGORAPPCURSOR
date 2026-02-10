@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { StyleSheet, Text, View, ScrollView, Platform, Pressable } from "react-native";
+import React from "react";
+import { StyleSheet, Text, View, ScrollView, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, Feather } from "@expo/vector-icons";
 import Colors from "@/constants/colors";
 import { useRigor } from "@/lib/rigor-context";
+import { useI18n } from "@/lib/i18n";
 
 function ConsistencyDot({ status }: { status: 'done' | 'fail' | 'critical' | 'empty' }) {
   const color = status === 'done' ? Colors.light.dotDone
@@ -16,6 +17,7 @@ function ConsistencyDot({ status }: { status: 'done' | 'fail' | 'critical' | 'em
 export default function ProgressScreen() {
   const insets = useSafeAreaInsets();
   const { contract, dayRecords, getCompletionRate, getCompletedCount, getFailedCount, getBestStreak, getCurrentStreak } = useRigor();
+  const { t } = useI18n();
 
   const rate = getCompletionRate();
   const done = getCompletedCount();
@@ -44,20 +46,18 @@ export default function ProgressScreen() {
     for (let i = 0; i < 30; i++) dots.push('empty');
   }
 
-  const columns = 13;
-
   return (
     <ScrollView
       style={[styles.container]}
       contentContainerStyle={{ paddingTop: Platform.OS === 'web' ? 67 : insets.top + 16, paddingBottom: 120 }}
       contentInsetAdjustmentBehavior="automatic"
     >
-      <Text style={styles.title}>Progress</Text>
+      <Text style={styles.title}>{t.progress.title}</Text>
       <Text style={styles.subtitle}>{contract?.rule ?? 'Workout'}</Text>
 
       <View style={styles.dropdownContainer}>
         <Text style={styles.dropdownText}>
-          {contract?.rule ?? 'Workout'} — {duration}d {contract ? '(active)' : ''}
+          {contract?.rule ?? 'Workout'} — {duration}d {contract ? `(${t.progress.active})` : ''}
         </Text>
         <Feather name="chevron-down" size={18} color={Colors.light.textSecondary} />
       </View>
@@ -65,20 +65,20 @@ export default function ProgressScreen() {
       <View style={styles.statsCards}>
         <View style={styles.statCard}>
           <Text style={[styles.statValue, { color: Colors.light.primary }]}>{rate}%</Text>
-          <Text style={styles.statCardLabel}>RATE</Text>
+          <Text style={styles.statCardLabel}>{t.progress.rate}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>{done}</Text>
-          <Text style={styles.statCardLabel}>DONE</Text>
+          <Text style={styles.statCardLabel}>{t.progress.done}</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={styles.statValue}>{fails}</Text>
-          <Text style={styles.statCardLabel}>FAILS</Text>
+          <Text style={styles.statCardLabel}>{t.progress.fails}</Text>
         </View>
       </View>
 
       <View style={styles.mapCard}>
-        <Text style={styles.mapTitle}>CONSISTENCY MAP</Text>
+        <Text style={styles.mapTitle}>{t.progress.consistencyMap}</Text>
         <View style={styles.dotsGrid}>
           {dots.map((status, i) => (
             <ConsistencyDot key={i} status={status} />
@@ -87,35 +87,35 @@ export default function ProgressScreen() {
         <View style={styles.legendRow}>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: Colors.light.dotDone }]} />
-            <Text style={styles.legendText}>Done</Text>
+            <Text style={styles.legendText}>{t.progress.legendDone}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: Colors.light.dotFail }]} />
-            <Text style={styles.legendText}>Fail</Text>
+            <Text style={styles.legendText}>{t.progress.legendFail}</Text>
           </View>
           <View style={styles.legendItem}>
             <View style={[styles.legendDot, { backgroundColor: Colors.light.dotCritical }]} />
-            <Text style={styles.legendText}>Critical</Text>
+            <Text style={styles.legendText}>{t.progress.legendCritical}</Text>
           </View>
         </View>
       </View>
 
-      <Text style={styles.insightsTitle}>INSIGHTS</Text>
+      <Text style={styles.insightsTitle}>{t.progress.insights}</Text>
 
       <View style={styles.insightCard}>
         <View style={[styles.insightIcon, { backgroundColor: '#FFF3E0' }]}>
           <Ionicons name="flame" size={20} color={Colors.light.primary} />
         </View>
-        <Text style={styles.insightLabel}>Best streak</Text>
-        <Text style={styles.insightValue}>{bestStreak} {bestStreak === 1 ? 'day' : 'days'}</Text>
+        <Text style={styles.insightLabel}>{t.progress.bestStreak}</Text>
+        <Text style={styles.insightValue}>{bestStreak} {bestStreak === 1 ? t.progress.day : t.progress.days}</Text>
       </View>
 
       <View style={styles.insightCard}>
         <View style={[styles.insightIcon, { backgroundColor: '#FFF3E0' }]}>
           <Ionicons name="trending-up" size={20} color={Colors.light.primary} />
         </View>
-        <Text style={styles.insightLabel}>Current streak</Text>
-        <Text style={styles.insightValue}>{currentStreak} {currentStreak === 1 ? 'day' : 'days'}</Text>
+        <Text style={styles.insightLabel}>{t.progress.currentStreak}</Text>
+        <Text style={styles.insightValue}>{currentStreak} {currentStreak === 1 ? t.progress.day : t.progress.days}</Text>
       </View>
     </ScrollView>
   );

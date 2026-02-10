@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { StyleSheet, Text, View, ScrollView, Pressable, TextInput, Modal, Alert, Platform, ActivityIndicator } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
@@ -6,6 +6,7 @@ import * as Haptics from "expo-haptics";
 import * as Clipboard from "expo-clipboard";
 import Colors from "@/constants/colors";
 import { useRigor, Squad } from "@/lib/rigor-context";
+import { useI18n } from "@/lib/i18n";
 import { getApiUrl } from "@/lib/query-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fetch } from "expo/fetch";
@@ -24,6 +25,7 @@ interface SquadMember {
 export default function SquadsScreen() {
   const insets = useSafeAreaInsets();
   const { squads, createSquad, joinSquad, leaveSquad } = useRigor();
+  const { t, language } = useI18n();
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [squadName, setSquadName] = useState("");
@@ -74,15 +76,16 @@ export default function SquadsScreen() {
       setJoinCode("");
       setShowJoin(false);
     } else {
-      Alert.alert("Erro", "Código inválido ou você já faz parte deste squad.");
+      Alert.alert("Error", t.squads.errorInvalidCode);
     }
   };
 
   const handleLeave = (id: string, name: string) => {
-    Alert.alert("Sair do Squad", `Sair de "${name}"? Isso não pode ser desfeito.`, [
-      { text: "Cancelar", style: "cancel" },
+    const msg = t.squads.leaveMessage.replace("{name}", name);
+    Alert.alert(t.squads.leaveTitle, msg, [
+      { text: t.squads.cancel, style: "cancel" },
       {
-        text: "Sair",
+        text: t.squads.leave,
         style: "destructive",
         onPress: async () => {
           await leaveSquad(id);
@@ -106,8 +109,9 @@ export default function SquadsScreen() {
     try {
       const d = new Date(dateStr);
       const day = d.getDate();
-      const months = ["jan.", "fev.", "mar.", "abr.", "mai.", "jun.", "jul.", "ago.", "set.", "out.", "nov.", "dez."];
-      return `${day} de ${months[d.getMonth()]}`;
+      const locale = language === 'pt' ? 'pt-BR' : 'en-US';
+      const month = d.toLocaleDateString(locale, { month: 'short' });
+      return `${day} ${month}`;
     } catch {
       return "";
     }
@@ -122,12 +126,12 @@ export default function SquadsScreen() {
         <View style={styles.detailHeader}>
           <Text style={styles.detailTitle}>{selectedSquad.name}</Text>
           <Pressable onPress={() => { setSelectedSquad(null); setMembers([]); }} hitSlop={12}>
-            <Text style={styles.backText}>Voltar</Text>
+            <Text style={styles.backText}>{t.squads.back}</Text>
           </Pressable>
         </View>
 
         <View style={styles.codeCard}>
-          <Text style={styles.codeLabel}>CÓDIGO</Text>
+          <Text style={styles.codeLabel}>{t.squads.codeLabel}</Text>
           <View style={styles.codeRow}>
             <Text style={styles.codeValue}>{selectedSquad.code}</Text>
             <Pressable onPress={() => handleCopyCode(selectedSquad.code)} hitSlop={12}>
@@ -136,12 +140,12 @@ export default function SquadsScreen() {
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>RANKING</Text>
+        <Text style={styles.sectionLabel}>{t.squads.ranking}</Text>
 
         {loadingMembers ? (
           <ActivityIndicator size="small" color={Colors.light.primary} style={{ marginTop: 20 }} />
         ) : members.length === 0 ? (
-          <Text style={styles.noMembers}>Nenhum membro encontrado</Text>
+          <Text style={styles.noMembers}>{t.squads.noMembers}</Text>
         ) : (
           members.map((member, idx) => (
             <View key={member.user_id} style={styles.memberCard}>
@@ -161,7 +165,7 @@ export default function SquadsScreen() {
                   )}
                 </View>
                 <Text style={styles.memberStats}>
-                  {member.completed_days} dias · {member.failed_days} falhas
+                  {member.completed_days} {t.squads.days} · {member.failed_days} {t.squads.failures}
                 </Text>
               </View>
               <Text style={styles.memberDate}>{formatJoinDate(member.joined_at)}</Text>
@@ -174,7 +178,7 @@ export default function SquadsScreen() {
           onPress={() => handleLeave(selectedSquad.id, selectedSquad.name)}
         >
           <Feather name="log-out" size={16} color={Colors.light.primary} />
-          <Text style={styles.leaveText}>Sair do squad</Text>
+          <Text style={styles.leaveText}>{t.squads.leaveSquad}</Text>
         </Pressable>
       </ScrollView>
     );
@@ -183,7 +187,7 @@ export default function SquadsScreen() {
   return (
     <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top + 16 }]}>
       <ScrollView contentContainerStyle={{ paddingBottom: Platform.OS === "web" ? 34 : 120 }}>
-        <Text style={styles.title}>Squads</Text>
+        <Text style={styles.title}>{t.squads.title}</Text>
 
         <View style={styles.buttonsRow}>
           <Pressable
@@ -191,22 +195,22 @@ export default function SquadsScreen() {
             onPress={() => setShowCreate(true)}
           >
             <Feather name="plus" size={18} color={Colors.light.primary} />
-            <Text style={styles.actionButtonText}>Criar</Text>
+            <Text style={styles.actionButtonText}>{t.squads.create}</Text>
           </Pressable>
           <Pressable
             style={({ pressed }) => [styles.actionButton, pressed && { opacity: 0.85 }]}
             onPress={() => setShowJoin(true)}
           >
             <Ionicons name="people" size={18} color={Colors.light.primary} />
-            <Text style={styles.actionButtonText}>Entrar</Text>
+            <Text style={styles.actionButtonText}>{t.squads.join}</Text>
           </Pressable>
         </View>
 
         {squads.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Ionicons name="people-outline" size={40} color={Colors.light.textTertiary} />
-            <Text style={styles.emptyText}>Nenhum squad ainda</Text>
-            <Text style={styles.emptySubtext}>Crie ou entre em um squad para ter responsabilidade social.</Text>
+            <Text style={styles.emptyText}>{t.squads.noSquads}</Text>
+            <Text style={styles.emptySubtext}>{t.squads.noSquadsDesc}</Text>
           </View>
         ) : (
           squads.map((squad) => (
@@ -217,7 +221,7 @@ export default function SquadsScreen() {
             >
               <View>
                 <Text style={styles.squadName}>{squad.name}</Text>
-                <Text style={styles.squadCode}>Código: {squad.code}</Text>
+                <Text style={styles.squadCode}>{t.squads.code}: {squad.code}</Text>
               </View>
               <Feather name="chevron-right" size={18} color={Colors.light.textTertiary} />
             </Pressable>
@@ -228,11 +232,11 @@ export default function SquadsScreen() {
       <Modal visible={showCreate} animationType="fade" transparent>
         <Pressable style={styles.modalOverlay} onPress={() => setShowCreate(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Criar Squad</Text>
-            <Text style={styles.modalSubtitle}>NOME DO SQUAD</Text>
+            <Text style={styles.modalTitle}>{t.squads.createSquad}</Text>
+            <Text style={styles.modalSubtitle}>{t.squads.squadName}</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Ex: Disciplina Total"
+              placeholder={t.squads.squadNamePlaceholder}
               placeholderTextColor={Colors.light.textTertiary}
               value={squadName}
               onChangeText={setSquadName}
@@ -243,7 +247,7 @@ export default function SquadsScreen() {
               onPress={handleCreate}
               disabled={!squadName.trim()}
             >
-              <Text style={styles.modalButtonText}>Criar</Text>
+              <Text style={styles.modalButtonText}>{t.squads.create}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -252,11 +256,11 @@ export default function SquadsScreen() {
       <Modal visible={showJoin} animationType="fade" transparent>
         <Pressable style={styles.modalOverlay} onPress={() => setShowJoin(false)}>
           <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Entrar no Squad</Text>
-            <Text style={styles.modalSubtitle}>CÓDIGO DO SQUAD</Text>
+            <Text style={styles.modalTitle}>{t.squads.joinSquad}</Text>
+            <Text style={styles.modalSubtitle}>{t.squads.squadCode}</Text>
             <TextInput
               style={styles.modalInput}
-              placeholder="Ex: a1b2c3d4"
+              placeholder={t.squads.squadCodePlaceholder}
               placeholderTextColor={Colors.light.textTertiary}
               value={joinCode}
               onChangeText={setJoinCode}
@@ -268,7 +272,7 @@ export default function SquadsScreen() {
               onPress={handleJoin}
               disabled={!joinCode.trim()}
             >
-              <Text style={styles.modalButtonText}>Entrar</Text>
+              <Text style={styles.modalButtonText}>{t.squads.join}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

@@ -7,6 +7,7 @@ import ViewShot from "react-native-view-shot";
 import * as Sharing from "expo-sharing";
 import Colors from "@/constants/colors";
 import { useRigor } from "@/lib/rigor-context";
+import { useI18n } from "@/lib/i18n";
 
 const CARD_BG = "#1A1A1A";
 const CARD_TEXT = "#FAFAFA";
@@ -20,6 +21,7 @@ export default function ShareCardScreen() {
   const insets = useSafeAreaInsets();
   const viewShotRef = useRef<ViewShot>(null);
   const { contract, dayRecords, getDayNumber, getCompletedCount, getFailedCount, getCompletionRate } = useRigor();
+  const { t } = useI18n();
 
   const dayNumber = getDayNumber();
   const completed = getCompletedCount();
@@ -103,7 +105,7 @@ export default function ShareCardScreen() {
     <View style={[styles.container, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
       <View style={styles.topBar}>
         <View style={{ width: 32 }} />
-        <Text style={styles.topBarTitle}>Compartilhar</Text>
+        <Text style={styles.topBarTitle}>{t.shareCard.title}</Text>
         <Pressable onPress={() => router.back()} hitSlop={12}>
           <Feather name="x" size={24} color={Colors.light.text} />
         </Pressable>
@@ -121,12 +123,12 @@ export default function ShareCardScreen() {
           <View style={styles.card}>
             <View style={styles.cardHeader}>
               <Text style={styles.cardLogo}>RIGOR</Text>
-              <Text style={styles.cardDay}>DIA {dayNumber}</Text>
+              <Text style={styles.cardDay}>{t.shareCard.day} {dayNumber}</Text>
             </View>
 
             <Text style={styles.cardRule}>{ruleText}</Text>
 
-            <Text style={styles.mapLabel}>MAPA DE CONSISTÊNCIA</Text>
+            <Text style={styles.mapLabel}>{t.shareCard.consistencyMap}</Text>
 
             <View style={styles.dotGrid}>
               {rows.map((row, rowIdx) => (
@@ -147,30 +149,30 @@ export default function ShareCardScreen() {
             <View style={styles.legend}>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: CARD_ORANGE }]} />
-                <Text style={styles.legendText}>Cumprido</Text>
+                <Text style={styles.legendText}>{t.shareCard.completed}</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: CARD_MUTED }]} />
-                <Text style={styles.legendText}>Falha</Text>
+                <Text style={styles.legendText}>{t.shareCard.failed}</Text>
               </View>
               <View style={styles.legendItem}>
                 <View style={[styles.legendDot, { backgroundColor: CARD_RED }]} />
-                <Text style={styles.legendText}>Crítica</Text>
+                <Text style={styles.legendText}>{t.shareCard.critical}</Text>
               </View>
             </View>
 
             <View style={styles.statsRow}>
               <View style={styles.statBlock}>
                 <Text style={styles.statValue}>{rate}%</Text>
-                <Text style={styles.statLabel}>Taxa</Text>
+                <Text style={styles.statLabel}>{t.shareCard.rate}</Text>
               </View>
               <View style={styles.statBlock}>
                 <Text style={styles.statValue}>{completed}</Text>
-                <Text style={styles.statLabel}>Cumpridos</Text>
+                <Text style={styles.statLabel}>{t.shareCard.completed}</Text>
               </View>
               <View style={styles.statBlock}>
                 <Text style={styles.statValue}>{duration}d</Text>
-                <Text style={styles.statLabel}>Contrato</Text>
+                <Text style={styles.statLabel}>{t.shareCard.contract}</Text>
               </View>
             </View>
           </View>
@@ -181,10 +183,10 @@ export default function ShareCardScreen() {
           onPress={handleDownload}
         >
           <Feather name="download" size={20} color="#fff" style={{ marginRight: 10 }} />
-          <Text style={styles.downloadText}>Baixar imagem</Text>
+          <Text style={styles.downloadText}>{t.shareCard.download}</Text>
         </Pressable>
 
-        <Text style={styles.hint}>PNG · Pronto para Instagram</Text>
+        <Text style={styles.hint}>{t.shareCard.hint}</Text>
       </ScrollView>
     </View>
   );

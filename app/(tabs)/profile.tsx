@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, ScrollView, Pressable, Alert, Platform, Switch } from "react-native";
+import { StyleSheet, Text, View, ScrollView, Pressable, Alert, Platform, Switch, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Notifications from "expo-notifications";
+import * as Haptics from "expo-haptics";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { useRigor } from "@/lib/rigor-context";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n, Language } from "@/lib/i18n";
 
 const NOTIFICATIONS_KEY = "@rigor_notifications";
+const DIFFICULTY_KEY = "@rigor_difficulty";
+
+export type Difficulty = "medium" | "hard" | "extreme";
+
+const DIFFICULTY_OPTIONS: { key: Difficulty; missions: number; pro: boolean }[] = [
+  { key: "medium", missions: 1, pro: false },
+  { key: "hard", missions: 4, pro: true },
+  { key: "extreme", missions: 6, pro: true },
+];
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -23,7 +34,11 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { contract, getCompletedCount, getFailedCount, getCurrentStreak, getBestStreak, getCompletionRate, getDaysRemaining, resetAll } = useRigor();
   const { user, logout } = useAuth();
+  const { language, setLanguage, t } = useI18n();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [showLanguage, setShowLanguage] = useState(false);
+  const [showDifficulty, setShowDifficulty] = useState(false);
+  const [difficulty, setDifficultyState] = useState<Difficulty>("medium");
 
   const completed = getCompletedCount();
   const failed = getFailedCount();
@@ -34,6 +49,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     loadNotificationState();
+    loadDifficulty();
   }, []);
 
   const loadNotificationState = async () => {
@@ -41,6 +57,31 @@ export default function ProfileScreen() {
       const val = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
       setNotificationsEnabled(val === "true");
     } catch {}
+  };
+
+  const loadDifficulty = async () => {
+    try {
+      const val = await AsyncStorage.getItem(DIFFICULTY_KEY);
+      if (val === "medium" || val === "hard" || val === "extreme") {
+        setDifficultyState(val);
+      }
+    } catch {}
+  };
+
+  const handleSetDifficulty = async (d: Difficulty) => {
+    if (d !== "medium" && DIFFICULTY_OPTIONS.find(o => o.key === d)?.pro) {
+      return;
+    }
+    setDifficultyState(d);
+    await AsyncStorage.setItem(DIFFICULTY_KEY, d);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowDifficulty(false);
+  };
+
+  const handleSetLanguage = async (lang: Language) => {
+    await setLanguage(lang);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setShowLanguage(false);
   };
 
   const toggleNotifications = async (value: boolean) => {
@@ -52,7 +93,7 @@ export default function ProfileScreen() {
         finalStatus = status;
       }
       if (finalStatus !== "granted") {
-        Alert.alert("Permission needed", "Enable notifications in your device settings to receive reminders.");
+        Alert.alert(t.profile.permissionNeeded, t.profile.permissionMessage);
         return;
       }
 
@@ -60,7 +101,7 @@ export default function ProfileScreen() {
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "RIGOR",
-          body: "Time to complete your daily task. No excuses.",
+          body: language === "pt" ? "Hora de cumprir sua missão diária. Sem desculpas." : "Time to complete your daily task. No excuses.",
           sound: true,
         },
         trigger: {
@@ -81,32 +122,36 @@ export default function ProfileScreen() {
 
   const handleReset = () => {
     Alert.alert(
-      "Reset Everything",
-      "This will delete your contract, all records, and squads. This cannot be undone.",
+      t.profile.resetTitle,
+      t.profile.resetMessage,
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Reset", style: "destructive", onPress: resetAll },
+        { text: t.profile.cancel, style: "cancel" },
+        { text: t.profile.reset, style: "destructive", onPress: resetAll },
       ]
     );
   };
 
   const handleLogout = () => {
     Alert.alert(
-      "Sign Out",
-      "Are you sure you want to sign out?",
+      t.profile.signOut,
+      t.profile.signOutConfirm,
       [
-        { text: "Cancel", style: "cancel" },
-        { text: "Sign Out", style: "destructive", onPress: logout },
+        { text: t.profile.cancel, style: "cancel" },
+        { text: t.profile.signOut, style: "destructive", onPress: logout },
       ]
     );
   };
+
+  const currentDiffOption = DIFFICULTY_OPTIONS.find(o => o.key === difficulty)!;
+  const difficultyLabel = t.profile[difficulty as keyof typeof t.profile] as string;
+  const languageLabel = language === "en" ? t.profile.english : t.profile.portuguese;
 
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingTop: Platform.OS === 'web' ? 67 : insets.top + 16, paddingBottom: 120 }}
     >
-      <Text style={styles.title}>Profile</Text>
+      <Text style={styles.title}>{t.profile.title}</Text>
 
       <View style={styles.userCard}>
         <View style={styles.avatarContainer}>
@@ -115,7 +160,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.userInfo}>
             <Text style={styles.userEmail} numberOfLines={1}>{user?.email ?? ""}</Text>
-            <Text style={styles.userStatus}>Active</Text>
+            <Text style={styles.userStatus}>{t.profile.active}</Text>
           </View>
         </View>
       </View>
@@ -126,55 +171,55 @@ export default function ProfileScreen() {
             <View style={styles.contractBadge}>
               <Feather name="file-text" size={16} color={Colors.light.primary} />
             </View>
-            <Text style={styles.contractTitle}>Active Contract</Text>
+            <Text style={styles.contractTitle}>{t.profile.activeContract}</Text>
           </View>
           <View style={styles.contractDetail}>
-            <Text style={styles.contractLabel}>Rule</Text>
+            <Text style={styles.contractLabel}>{t.profile.rule}</Text>
             <Text style={styles.contractValue}>{contract.rule}</Text>
           </View>
           <View style={styles.contractDetail}>
-            <Text style={styles.contractLabel}>Duration</Text>
-            <Text style={styles.contractValue}>{contract.duration} days</Text>
+            <Text style={styles.contractLabel}>{t.profile.duration}</Text>
+            <Text style={styles.contractValue}>{contract.duration} {t.profile.days}</Text>
           </View>
           <View style={styles.contractDetail}>
-            <Text style={styles.contractLabel}>Deadline</Text>
+            <Text style={styles.contractLabel}>{t.profile.deadline}</Text>
             <Text style={styles.contractValue}>
               {contract.deadline_hour.toString().padStart(2, '0')}:{contract.deadline_minute.toString().padStart(2, '0')}
             </Text>
           </View>
           <View style={styles.contractDetail}>
-            <Text style={styles.contractLabel}>Start Date</Text>
+            <Text style={styles.contractLabel}>{t.profile.startDate}</Text>
             <Text style={styles.contractValue}>{contract.start_date}</Text>
           </View>
           <View style={[styles.contractDetail, { borderBottomWidth: 0 }]}>
-            <Text style={styles.contractLabel}>Remaining</Text>
-            <Text style={styles.contractValue}>{remaining} days</Text>
+            <Text style={styles.contractLabel}>{t.profile.remaining}</Text>
+            <Text style={styles.contractValue}>{remaining} {t.profile.days}</Text>
           </View>
         </View>
       )}
 
-      <Text style={styles.sectionTitle}>STATISTICS</Text>
+      <Text style={styles.sectionTitle}>{t.profile.statistics}</Text>
 
       <View style={styles.statsGrid}>
         <View style={styles.statsItem}>
           <Ionicons name="checkmark-circle" size={20} color={Colors.light.success} />
           <Text style={styles.statsValue}>{completed}</Text>
-          <Text style={styles.statsLabel}>Completed</Text>
+          <Text style={styles.statsLabel}>{t.profile.completed}</Text>
         </View>
         <View style={styles.statsItem}>
           <Ionicons name="close-circle" size={20} color={Colors.light.error} />
           <Text style={styles.statsValue}>{failed}</Text>
-          <Text style={styles.statsLabel}>Failed</Text>
+          <Text style={styles.statsLabel}>{t.profile.failed}</Text>
         </View>
         <View style={styles.statsItem}>
           <Ionicons name="trending-up" size={20} color={Colors.light.primary} />
           <Text style={styles.statsValue}>{rate}%</Text>
-          <Text style={styles.statsLabel}>Rate</Text>
+          <Text style={styles.statsLabel}>{t.profile.rate}</Text>
         </View>
         <View style={styles.statsItem}>
           <Ionicons name="flame" size={20} color={Colors.light.primary} />
           <Text style={styles.statsValue}>{currentStreak}</Text>
-          <Text style={styles.statsLabel}>Streak</Text>
+          <Text style={styles.statsLabel}>{t.profile.streak}</Text>
         </View>
       </View>
 
@@ -182,15 +227,15 @@ export default function ProfileScreen() {
         <View style={[styles.insightIcon, { backgroundColor: '#FFF3E0' }]}>
           <Ionicons name="flame" size={18} color={Colors.light.primary} />
         </View>
-        <Text style={styles.insightLabel}>Best streak</Text>
-        <Text style={styles.insightValue}>{bestStreak} {bestStreak === 1 ? 'day' : 'days'}</Text>
+        <Text style={styles.insightLabel}>{t.profile.bestStreak}</Text>
+        <Text style={styles.insightValue}>{bestStreak} {bestStreak === 1 ? t.profile.day : t.profile.days}</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>SETTINGS</Text>
+      <Text style={styles.sectionTitle}>{t.profile.settings}</Text>
 
       <View style={styles.settingRow}>
         <Feather name="bell" size={18} color={Colors.light.text} />
-        <Text style={styles.settingText}>Daily Reminder</Text>
+        <Text style={styles.settingText}>{t.profile.dailyReminder}</Text>
         <Switch
           value={notificationsEnabled}
           onValueChange={toggleNotifications}
@@ -202,11 +247,33 @@ export default function ProfileScreen() {
 
       <Pressable
         style={({ pressed }) => [styles.settingRow, pressed && { opacity: 0.7 }]}
+        onPress={() => setShowLanguage(true)}
+        testID="language-button"
+      >
+        <Ionicons name="language" size={18} color={Colors.light.text} />
+        <Text style={styles.settingText}>{t.profile.language}</Text>
+        <Text style={styles.settingValue}>{languageLabel}</Text>
+        <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.settingRow, pressed && { opacity: 0.7 }]}
+        onPress={() => setShowDifficulty(true)}
+        testID="difficulty-button"
+      >
+        <Ionicons name="speedometer" size={18} color={Colors.light.text} />
+        <Text style={styles.settingText}>{t.profile.difficulty}</Text>
+        <Text style={styles.settingValue}>{difficultyLabel}</Text>
+        <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.settingRow, pressed && { opacity: 0.7 }]}
         onPress={() => router.push("/about")}
         testID="about-button"
       >
         <Feather name="info" size={18} color={Colors.light.text} />
-        <Text style={styles.settingText}>About RIGOR</Text>
+        <Text style={styles.settingText}>{t.profile.aboutRigor}</Text>
         <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
       </Pressable>
 
@@ -216,7 +283,7 @@ export default function ProfileScreen() {
         testID="logout-button"
       >
         <Feather name="log-out" size={16} color={Colors.light.primary} />
-        <Text style={styles.logoutText}>Sign Out</Text>
+        <Text style={styles.logoutText}>{t.profile.signOut}</Text>
       </Pressable>
 
       <Pressable
@@ -224,10 +291,97 @@ export default function ProfileScreen() {
         onPress={handleReset}
       >
         <Feather name="trash-2" size={16} color={Colors.light.error} />
-        <Text style={styles.resetText}>Reset all data</Text>
+        <Text style={styles.resetText}>{t.profile.resetAll}</Text>
       </Pressable>
 
       <Text style={styles.version}>RIGOR v1.0.0</Text>
+
+      <Modal visible={showLanguage} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowLanguage(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t.profile.languageTitle}</Text>
+              <Pressable onPress={() => setShowLanguage(false)} hitSlop={12}>
+                <Feather name="x" size={20} color={Colors.light.text} />
+              </Pressable>
+            </View>
+
+            <Pressable
+              style={[styles.optionCard, language === "en" && styles.optionCardSelected]}
+              onPress={() => handleSetLanguage("en")}
+            >
+              <Text style={[styles.optionLabel, language === "en" && styles.optionLabelSelected]}>English</Text>
+              {language === "en" && (
+                <Ionicons name="checkmark-circle" size={22} color={Colors.light.primary} />
+              )}
+            </Pressable>
+
+            <Pressable
+              style={[styles.optionCard, language === "pt" && styles.optionCardSelected]}
+              onPress={() => handleSetLanguage("pt")}
+            >
+              <Text style={[styles.optionLabel, language === "pt" && styles.optionLabelSelected]}>Português</Text>
+              {language === "pt" && (
+                <Ionicons name="checkmark-circle" size={22} color={Colors.light.primary} />
+              )}
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showDifficulty} animationType="fade" transparent>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowDifficulty(false)}>
+          <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>{t.profile.difficultyTitle}</Text>
+              <Pressable onPress={() => setShowDifficulty(false)} hitSlop={12}>
+                <Feather name="x" size={20} color={Colors.light.text} />
+              </Pressable>
+            </View>
+
+            <Text style={styles.diffWarning}>{t.profile.difficultyWarning}</Text>
+
+            {DIFFICULTY_OPTIONS.map((option) => {
+              const isSelected = difficulty === option.key;
+              const label = t.profile[option.key as keyof typeof t.profile] as string;
+              const missionCount = option.missions;
+              const missionLabel = missionCount === 1 ? t.profile.mission : t.profile.missions;
+
+              return (
+                <Pressable
+                  key={option.key}
+                  style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                  onPress={() => handleSetDifficulty(option.key)}
+                >
+                  <View>
+                    <View style={styles.optionNameRow}>
+                      <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>{label}</Text>
+                      {option.pro && (
+                        <View style={styles.proBadge}>
+                          <Text style={styles.proBadgeText}>{t.profile.pro}</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.optionSub}>{missionCount} {missionLabel}</Text>
+                  </View>
+                  {isSelected ? (
+                    <Ionicons name="checkmark-circle" size={22} color={Colors.light.primary} />
+                  ) : option.pro ? (
+                    <Feather name="lock" size={18} color={Colors.light.textTertiary} />
+                  ) : null}
+                </Pressable>
+              );
+            })}
+
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => setShowDifficulty(false)}
+            >
+              <Text style={styles.cancelButtonText}>{t.profile.cancel}</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </ScrollView>
   );
 }
@@ -422,6 +576,12 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     flex: 1,
   },
+  settingValue: {
+    fontFamily: "Rubik_400Regular",
+    fontSize: 14,
+    color: Colors.light.textTertiary,
+    marginRight: 4,
+  },
   logoutButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -462,5 +622,93 @@ const styles = StyleSheet.create({
     color: Colors.light.textTertiary,
     textAlign: "center",
     marginTop: 24,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: Colors.light.surface,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: Platform.OS === "web" ? 34 : 40,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontFamily: "Rubik_700Bold",
+    fontSize: 20,
+    color: Colors.light.text,
+  },
+  diffWarning: {
+    fontFamily: "Rubik_400Regular",
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+    marginBottom: 16,
+  },
+  optionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: Colors.light.background,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 10,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  optionCardSelected: {
+    borderColor: Colors.light.primary,
+    backgroundColor: "#FFF3E0",
+  },
+  optionNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  optionLabel: {
+    fontFamily: "Rubik_600SemiBold",
+    fontSize: 16,
+    color: Colors.light.text,
+  },
+  optionLabelSelected: {
+    color: Colors.light.text,
+  },
+  optionSub: {
+    fontFamily: "Rubik_400Regular",
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+    marginTop: 2,
+  },
+  proBadge: {
+    backgroundColor: Colors.light.primary,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  proBadgeText: {
+    fontFamily: "Rubik_700Bold",
+    fontSize: 10,
+    color: "#fff",
+    letterSpacing: 0.5,
+  },
+  cancelButton: {
+    backgroundColor: Colors.light.background,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  cancelButtonText: {
+    fontFamily: "Rubik_600SemiBold",
+    fontSize: 16,
+    color: Colors.light.text,
   },
 });

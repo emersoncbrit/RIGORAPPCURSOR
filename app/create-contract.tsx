@@ -4,15 +4,17 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import Animated, { FadeInDown, FadeInUp } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { useRigor } from "@/lib/rigor-context";
+import { useI18n } from "@/lib/i18n";
 
 const DURATIONS = [14, 30, 66];
 
 export default function CreateContractScreen() {
   const insets = useSafeAreaInsets();
   const { signContract } = useRigor();
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [rule, setRule] = useState("");
   const [deadlineHour, setDeadlineHour] = useState(23);
@@ -54,7 +56,7 @@ export default function CreateContractScreen() {
         <Pressable onPress={() => router.back()} style={styles.closeBtn}>
           <Feather name="x" size={24} color={Colors.light.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>New Contract</Text>
+        <Text style={styles.headerTitle}>{t.createContract.title}</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -64,13 +66,11 @@ export default function CreateContractScreen() {
             <View style={styles.stepBadge}>
               <Text style={styles.stepBadgeText}>01</Text>
             </View>
-            <Text style={styles.stepTitle}>Define your rule</Text>
-            <Text style={styles.stepDesc}>
-              A specific action you commit to every day. One rule. No negotiation.
-            </Text>
+            <Text style={styles.stepTitle}>{t.createContract.step1Title}</Text>
+            <Text style={styles.stepDesc}>{t.createContract.step1Desc}</Text>
             <TextInput
               style={styles.ruleInput}
-              placeholder='e.g., "Workout", "Study for 1 hour"'
+              placeholder={t.createContract.inputPlaceholder}
               placeholderTextColor={Colors.light.textTertiary}
               value={rule}
               onChangeText={setRule}
@@ -93,7 +93,7 @@ export default function CreateContractScreen() {
               onPress={() => rule.trim() && setStep(1)}
               disabled={!rule.trim()}
             >
-              <Text style={styles.nextButtonText}>Next</Text>
+              <Text style={styles.nextButtonText}>{t.createContract.next}</Text>
             </Pressable>
           </Animated.View>
         )}
@@ -103,10 +103,8 @@ export default function CreateContractScreen() {
             <View style={styles.stepBadge}>
               <Text style={styles.stepBadgeText}>02</Text>
             </View>
-            <Text style={styles.stepTitle}>Set the deadline</Text>
-            <Text style={styles.stepDesc}>
-              The time limit to complete it each day. Missed the deadline? Failure recorded.
-            </Text>
+            <Text style={styles.stepTitle}>{t.createContract.step2Title}</Text>
+            <Text style={styles.stepDesc}>{t.createContract.step2Desc}</Text>
 
             <View style={styles.timePickerContainer}>
               <View style={styles.timeColumn}>
@@ -130,9 +128,7 @@ export default function CreateContractScreen() {
               </View>
             </View>
 
-            <Text style={styles.deadlineNote}>
-              Every 7 consecutive days, your deadline shrinks by 30 min.
-            </Text>
+            <Text style={styles.deadlineNote}>{t.createContract.deadlineNote}</Text>
 
             <View style={styles.buttonRow}>
               <Pressable style={({ pressed }) => [styles.backButton, pressed && { opacity: 0.7 }]} onPress={() => setStep(0)}>
@@ -142,7 +138,7 @@ export default function CreateContractScreen() {
                 style={({ pressed }) => [styles.nextButton, { flex: 1 }, pressed && { opacity: 0.85 }]}
                 onPress={() => setStep(2)}
               >
-                <Text style={styles.nextButtonText}>Next</Text>
+                <Text style={styles.nextButtonText}>{t.createContract.next}</Text>
               </Pressable>
             </View>
           </Animated.View>
@@ -153,10 +149,8 @@ export default function CreateContractScreen() {
             <View style={styles.stepBadge}>
               <Text style={styles.stepBadgeText}>03</Text>
             </View>
-            <Text style={styles.stepTitle}>Choose duration</Text>
-            <Text style={styles.stepDesc}>
-              Once signed, it can't be edited, paused, or cancelled. The contract is irreversible.
-            </Text>
+            <Text style={styles.stepTitle}>{t.createContract.step3Title}</Text>
+            <Text style={styles.stepDesc}>{t.createContract.step3Desc}</Text>
 
             <View style={styles.durationOptions}>
               {DURATIONS.map((d) => (
@@ -169,34 +163,32 @@ export default function CreateContractScreen() {
                   }}
                 >
                   <Text style={[styles.durationNumber, duration === d && styles.durationNumberSelected]}>{d}</Text>
-                  <Text style={[styles.durationLabel, duration === d && styles.durationLabelSelected]}>days</Text>
+                  <Text style={[styles.durationLabel, duration === d && styles.durationLabelSelected]}>{t.createContract.days}</Text>
                 </Pressable>
               ))}
             </View>
 
             <View style={styles.contractSummary}>
-              <Text style={styles.summaryTitle}>Contract Summary</Text>
+              <Text style={styles.summaryTitle}>{t.createContract.contractSummary}</Text>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Rule</Text>
+                <Text style={styles.summaryLabel}>{t.createContract.rule}</Text>
                 <Text style={styles.summaryValue}>{rule}</Text>
               </View>
               <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Deadline</Text>
+                <Text style={styles.summaryLabel}>{t.createContract.deadline}</Text>
                 <Text style={styles.summaryValue}>
                   {deadlineHour.toString().padStart(2, '0')}:{deadlineMinute.toString().padStart(2, '0')}
                 </Text>
               </View>
               <View style={[styles.summaryRow, { borderBottomWidth: 0 }]}>
-                <Text style={styles.summaryLabel}>Duration</Text>
-                <Text style={styles.summaryValue}>{duration} days</Text>
+                <Text style={styles.summaryLabel}>{t.createContract.duration}</Text>
+                <Text style={styles.summaryValue}>{duration} {t.createContract.days}</Text>
               </View>
             </View>
 
             <View style={styles.warningBox}>
               <Ionicons name="warning" size={16} color={Colors.light.primary} />
-              <Text style={styles.warningText}>
-                No editing. No pausing. No excuses. This is irreversible.
-              </Text>
+              <Text style={styles.warningText}>{t.createContract.warning}</Text>
             </View>
 
             <View style={styles.buttonRow}>
@@ -207,7 +199,7 @@ export default function CreateContractScreen() {
                 style={({ pressed }) => [styles.signButton, { flex: 1 }, pressed && { opacity: 0.85 }]}
                 onPress={handleSign}
               >
-                <Text style={styles.signButtonText}>Sign Contract</Text>
+                <Text style={styles.signButtonText}>{t.createContract.signContract}</Text>
               </Pressable>
             </View>
           </Animated.View>

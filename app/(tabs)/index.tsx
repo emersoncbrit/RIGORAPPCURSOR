@@ -7,10 +7,12 @@ import * as Haptics from "expo-haptics";
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withSequence, withTiming } from "react-native-reanimated";
 import Colors from "@/constants/colors";
 import { useRigor } from "@/lib/rigor-context";
+import { useI18n } from "@/lib/i18n";
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
   const { contract, markDone, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getDaysRemaining, getCurrentDeadline, isTodayCompleted } = useRigor();
+  const { t, language } = useI18n();
   const [currentTime, setCurrentTime] = useState(new Date());
   const buttonScale = useSharedValue(1);
 
@@ -29,7 +31,8 @@ export default function TodayScreen() {
   const total = contract ? contract.duration : 1;
   const progress = total > 0 ? (completed / total) : 0;
 
-  const dayName = currentTime.toLocaleDateString('en-US', { weekday: 'long' });
+  const locale = language === 'pt' ? 'pt-BR' : 'en-US';
+  const dayName = currentTime.toLocaleDateString(locale, { weekday: 'long' });
   const dayOfMonth = currentTime.getDate();
   const hours = currentTime.getHours().toString().padStart(2, '0');
   const minutes = currentTime.getMinutes().toString().padStart(2, '0');
@@ -60,13 +63,13 @@ export default function TodayScreen() {
         </View>
         <View style={styles.emptyContainer}>
           <Feather name="target" size={48} color={Colors.light.textTertiary} />
-          <Text style={styles.emptyTitle}>No active contract</Text>
-          <Text style={styles.emptyText}>Sign your first contract to begin.</Text>
+          <Text style={styles.emptyTitle}>{t.today.noContract}</Text>
+          <Text style={styles.emptyText}>{t.today.noContractDesc}</Text>
           <Pressable
             style={({ pressed }) => [styles.signButton, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}
             onPress={() => router.push('/create-contract')}
           >
-            <Text style={styles.signButtonText}>Sign my first contract</Text>
+            <Text style={styles.signButtonText}>{t.today.signFirst}</Text>
           </Pressable>
         </View>
       </View>
@@ -78,7 +81,7 @@ export default function TodayScreen() {
       <View style={styles.header}>
         <Text style={styles.logo}>RIGOR</Text>
         <View style={styles.dayBadge}>
-          <Text style={styles.dayBadgeText}>DAY {dayNumber}</Text>
+          <Text style={styles.dayBadgeText}>{t.today.day} {dayNumber}</Text>
         </View>
         <Pressable style={styles.headerIcon} onPress={() => router.push('/share-card')}>
           <Feather name="download" size={20} color={Colors.light.text} />
@@ -92,11 +95,11 @@ export default function TodayScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{completed}</Text>
-            <Text style={styles.statLabel}>COMPLETED</Text>
+            <Text style={styles.statLabel}>{t.today.completed}</Text>
           </View>
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{failed}</Text>
-            <Text style={styles.statLabel}>FAILED</Text>
+            <Text style={styles.statLabel}>{t.today.failed}</Text>
           </View>
         </View>
 
@@ -106,24 +109,24 @@ export default function TodayScreen() {
 
         <View style={styles.divider} />
 
-        <Text style={styles.ruleText}>{contract.rule} before {deadlineStr}</Text>
+        <Text style={styles.ruleText}>{contract.rule} {t.today.before} {deadlineStr}</Text>
 
         <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{remaining}d remaining</Text>
-          <Text style={styles.metaText}>Streak: {streak}</Text>
-          <Text style={styles.noReturn}>No return</Text>
+          <Text style={styles.metaText}>{remaining}d {t.today.remaining}</Text>
+          <Text style={styles.metaText}>{t.today.streak}: {streak}</Text>
+          <Text style={styles.noReturn}>{t.today.noReturn}</Text>
         </View>
       </View>
 
       {todayDone ? (
-        <Text style={styles.dayCompleted}>Day completed</Text>
+        <Text style={styles.dayCompleted}>{t.today.dayCompleted}</Text>
       ) : (
         <Animated.View style={buttonAnimStyle}>
           <Pressable
             style={({ pressed }) => [styles.doneButton, pressed && { opacity: 0.9 }]}
             onPress={handleDone}
           >
-            <Text style={styles.doneButtonText}>Done</Text>
+            <Text style={styles.doneButtonText}>{t.today.done}</Text>
           </Pressable>
         </Animated.View>
       )}
