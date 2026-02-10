@@ -1,13 +1,29 @@
-import React from "react";
-import { StyleSheet, Text, View, ScrollView, Pressable, Alert, Platform } from "react-native";
+import React, { useState, useEffect } from "react";
+import { StyleSheet, Text, View, ScrollView, Pressable, Alert, Platform, Switch } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { Feather, Ionicons } from "@expo/vector-icons";
+import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Colors from "@/constants/colors";
 import { useRigor } from "@/lib/rigor-context";
+import { useAuth } from "@/lib/auth-context";
+
+const NOTIFICATIONS_KEY = "@rigor_notifications";
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { contract, getCompletedCount, getFailedCount, getCurrentStreak, getBestStreak, getCompletionRate, getDaysRemaining, resetAll } = useRigor();
+  const { user, logout } = useAuth();
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const completed = getCompletedCount();
   const failed = getFailedCount();
@@ -15,6 +31,53 @@ export default function ProfileScreen() {
   const bestStreak = getBestStreak();
   const rate = getCompletionRate();
   const remaining = getDaysRemaining();
+
+  useEffect(() => {
+    loadNotificationState();
+  }, []);
+
+  const loadNotificationState = async () => {
+    try {
+      const val = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
+      setNotificationsEnabled(val === "true");
+    } catch {}
+  };
+
+  const toggleNotifications = async (value: boolean) => {
+    if (value) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      if (existingStatus !== "granted") {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      if (finalStatus !== "granted") {
+        Alert.alert("Permission needed", "Enable notifications in your device settings to receive reminders.");
+        return;
+      }
+
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "RIGOR",
+          body: "Time to complete your daily task. No excuses.",
+          sound: true,
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DAILY,
+          hour: 9,
+          minute: 0,
+        },
+      });
+
+      setNotificationsEnabled(true);
+      await AsyncStorage.setItem(NOTIFICATIONS_KEY, "true");
+    } else {
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      setNotificationsEnabled(false);
+      await AsyncStorage.setItem(NOTIFICATIONS_KEY, "false");
+    }
+  };
 
   const handleReset = () => {
     Alert.alert(
@@ -27,13 +90,35 @@ export default function ProfileScreen() {
     );
   };
 
+  const handleLogout = () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Sign Out", style: "destructive", onPress: logout },
+      ]
+    );
+  };
+
   return (
     <ScrollView
       style={styles.container}
       contentContainerStyle={{ paddingTop: Platform.OS === 'web' ? 67 : insets.top + 16, paddingBottom: 120 }}
-      contentInsetAdjustmentBehavior="automatic"
     >
       <Text style={styles.title}>Profile</Text>
+
+      <View style={styles.userCard}>
+        <View style={styles.avatarContainer}>
+          <View style={styles.avatar}>
+            <Feather name="user" size={22} color={Colors.light.primary} />
+          </View>
+          <View style={styles.userInfo}>
+            <Text style={styles.userEmail} numberOfLines={1}>{user?.email ?? ""}</Text>
+            <Text style={styles.userStatus}>Active</Text>
+          </View>
+        </View>
+      </View>
 
       {contract && (
         <View style={styles.contractCard}>
@@ -103,16 +188,35 @@ export default function ProfileScreen() {
 
       <Text style={styles.sectionTitle}>SETTINGS</Text>
 
-      <Pressable style={({ pressed }) => [styles.settingRow, pressed && { opacity: 0.7 }]}>
+      <View style={styles.settingRow}>
         <Feather name="bell" size={18} color={Colors.light.text} />
-        <Text style={styles.settingText}>Notifications</Text>
-        <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
-      </Pressable>
+        <Text style={styles.settingText}>Daily Reminder</Text>
+        <Switch
+          value={notificationsEnabled}
+          onValueChange={toggleNotifications}
+          trackColor={{ false: Colors.light.border, true: Colors.light.primary }}
+          thumbColor="#fff"
+          testID="notification-toggle"
+        />
+      </View>
 
-      <Pressable style={({ pressed }) => [styles.settingRow, pressed && { opacity: 0.7 }]}>
+      <Pressable
+        style={({ pressed }) => [styles.settingRow, pressed && { opacity: 0.7 }]}
+        onPress={() => router.push("/about")}
+        testID="about-button"
+      >
         <Feather name="info" size={18} color={Colors.light.text} />
         <Text style={styles.settingText}>About RIGOR</Text>
         <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.logoutButton, pressed && { opacity: 0.85 }]}
+        onPress={handleLogout}
+        testID="logout-button"
+      >
+        <Feather name="log-out" size={16} color={Colors.light.primary} />
+        <Text style={styles.logoutText}>Sign Out</Text>
       </Pressable>
 
       <Pressable
@@ -139,6 +243,45 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     paddingHorizontal: 20,
     marginBottom: 20,
+  },
+  userCard: {
+    backgroundColor: Colors.light.surface,
+    marginHorizontal: 20,
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  avatarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  avatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FFF3E0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userEmail: {
+    fontFamily: "Rubik_600SemiBold",
+    fontSize: 15,
+    color: Colors.light.text,
+  },
+  userStatus: {
+    fontFamily: "Rubik_400Regular",
+    fontSize: 12,
+    color: Colors.light.success,
+    marginTop: 2,
   },
   contractCard: {
     backgroundColor: Colors.light.surface,
@@ -279,13 +422,30 @@ const styles = StyleSheet.create({
     color: Colors.light.text,
     flex: 1,
   },
-  resetButton: {
+  logoutButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
     marginHorizontal: 20,
     marginTop: 24,
+    paddingVertical: 16,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: Colors.light.primary,
+  },
+  logoutText: {
+    fontFamily: "Rubik_600SemiBold",
+    fontSize: 15,
+    color: Colors.light.primary,
+  },
+  resetButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginHorizontal: 20,
+    marginTop: 12,
     paddingVertical: 16,
     borderRadius: 14,
     borderWidth: 1,

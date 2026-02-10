@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
+import { AuthProvider } from "@/lib/auth-context";
 import { RigorProvider } from "@/lib/rigor-context";
 import { useFonts, Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Rubik_800ExtraBold } from "@expo-google-fonts/rubik";
 
@@ -14,8 +15,10 @@ SplashScreen.preventAutoHideAsync();
 function RootLayoutNav() {
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="create-contract" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="about" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
   );
 }
@@ -42,9 +45,11 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView>
           <KeyboardProvider>
-            <RigorProvider>
-              <RootLayoutNav />
-            </RigorProvider>
+            <AuthProvider>
+              <RigorProvider>
+                <RootLayoutNav />
+              </RigorProvider>
+            </AuthProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>
       </QueryClientProvider>

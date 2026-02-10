@@ -27,7 +27,15 @@
       }
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "RIGOR",
+      "shortName": "RIGOR",
+      "description": "Discipline tracking app. Create irreversible contracts, track consistency, build unbreakable habits.",
+      "themeColor": "#E8611A",
+      "backgroundColor": "#FAF8F5",
+      "display": "standalone",
+      "orientation": "portrait",
+      "startUrl": "/"
     },
     "plugins": [
       [

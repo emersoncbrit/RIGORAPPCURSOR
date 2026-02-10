@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiRequest, getApiUrl } from '@/lib/query-client';
+import { useAuth } from '@/lib/auth-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetch } from 'expo/fetch';
 
 export interface Contract {
@@ -54,13 +55,9 @@ interface RigorContextValue {
   refreshData: () => Promise<void>;
 }
 
-const DEVICE_ID_KEY = '@rigor_device_id';
+const AUTH_TOKEN_KEY = '@rigor_auth_token';
 
 const RigorContext = createContext<RigorContextValue | null>(null);
-
-function generateDeviceId(): string {
-  return Date.now().toString() + Math.random().toString(36).substr(2, 9);
-}
 
 function generateCode(): string {
   const chars = '0123456789abcdef';
@@ -82,46 +79,40 @@ function daysBetween(start: string, end: string): number {
 }
 
 export function RigorProvider({ children }: { children: ReactNode }) {
-  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const { user, isAuthenticated } = useAuth();
   const [contract, setContract] = useState<Contract | null>(null);
   const [dayRecords, setDayRecords] = useState<DayRecord[]>([]);
   const [squads, setSquads] = useState<Squad[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    initDevice();
-  }, []);
-
-  const initDevice = async () => {
-    try {
-      let id = await AsyncStorage.getItem(DEVICE_ID_KEY);
-      if (!id) {
-        id = generateDeviceId();
-        await AsyncStorage.setItem(DEVICE_ID_KEY, id);
-      }
-      setDeviceId(id);
-    } catch (e) {
-      const id = generateDeviceId();
-      setDeviceId(id);
+    if (isAuthenticated && user) {
+      loadAllData();
+    } else {
+      setContract(null);
+      setDayRecords([]);
+      setSquads([]);
     }
+  }, [isAuthenticated, user?.id]);
+
+  const getAuthHeader = async (): Promise<Record<string, string>> => {
+    try {
+      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      if (token) return { Authorization: `Bearer ${token}` };
+    } catch {}
+    return {};
   };
 
-  useEffect(() => {
-    if (deviceId) {
-      loadAllData();
-    }
-  }, [deviceId]);
-
   const loadAllData = async () => {
-    if (!deviceId) return;
     setIsLoading(true);
     try {
       const baseUrl = getApiUrl();
+      const authHeaders = await getAuthHeader();
 
       const [contractRes, recordsRes, squadsRes] = await Promise.all([
-        fetch(new URL(`/api/contract/${deviceId}`, baseUrl).toString(), { credentials: 'include' }),
-        fetch(new URL(`/api/records/${deviceId}`, baseUrl).toString(), { credentials: 'include' }),
-        fetch(new URL(`/api/squads/${deviceId}`, baseUrl).toString(), { credentials: 'include' }),
+        fetch(new URL('/api/contract', baseUrl).toString(), { headers: authHeaders }),
+        fetch(new URL('/api/records', baseUrl).toString(), { headers: authHeaders }),
+        fetch(new URL('/api/squads', baseUrl).toString(), { headers: authHeaders }),
       ]);
 
       if (contractRes.ok) {
@@ -139,21 +130,20 @@ export function RigorProvider({ children }: { children: ReactNode }) {
         setSquads(squadsData.squads || []);
       }
     } catch (e) {
-      console.error('Failed to load data from Supabase:', e);
+      console.error('Failed to load data:', e);
     } finally {
       setIsLoading(false);
     }
   };
 
   const refreshData = useCallback(async () => {
-    await loadAllData();
-  }, [deviceId]);
+    if (isAuthenticated) await loadAllData();
+  }, [isAuthenticated]);
 
   const signContract = useCallback(async (rule: string, deadlineHour: number, deadlineMinute: number, duration: number) => {
-    if (!deviceId) return;
+    if (!isAuthenticated) return;
     try {
       const res = await apiRequest('POST', '/api/contract', {
-        device_id: deviceId,
         rule,
         deadline_hour: deadlineHour,
         deadline_minute: deadlineMinute,
@@ -166,14 +156,13 @@ export function RigorProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error('Failed to sign contract:', e);
     }
-  }, [deviceId]);
+  }, [isAuthenticated]);
 
   const markDone = useCallback(async () => {
-    if (!deviceId || !contract) return;
+    if (!isAuthenticated || !contract) return;
     const today = getDateStr();
     try {
       const res = await apiRequest('POST', '/api/records', {
-        device_id: deviceId,
         contract_id: contract.id,
         date: today,
         completed: true,
@@ -188,48 +177,41 @@ export function RigorProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.error('Failed to mark done:', e);
     }
-  }, [deviceId, contract]);
+  }, [isAuthenticated, contract]);
 
   const createSquad = useCallback(async (name: string) => {
-    if (!deviceId) return;
+    if (!isAuthenticated) return;
     try {
       const code = generateCode();
-      const res = await apiRequest('POST', '/api/squads', {
-        device_id: deviceId,
-        name,
-        code,
-      });
+      const res = await apiRequest('POST', '/api/squads', { name, code });
       const data = await res.json();
       setSquads(prev => [...prev, data.squad]);
     } catch (e) {
       console.error('Failed to create squad:', e);
     }
-  }, [deviceId]);
+  }, [isAuthenticated]);
 
   const joinSquad = useCallback(async (code: string): Promise<boolean> => {
-    if (!deviceId) return false;
+    if (!isAuthenticated) return false;
     try {
-      const res = await apiRequest('POST', '/api/squads/join', {
-        device_id: deviceId,
-        code,
-      });
+      const res = await apiRequest('POST', '/api/squads/join', { code });
       const data = await res.json();
       setSquads(prev => [...prev, data.squad]);
       return true;
     } catch (e) {
       return false;
     }
-  }, [deviceId]);
+  }, [isAuthenticated]);
 
   const leaveSquad = useCallback(async (id: string) => {
-    if (!deviceId) return;
+    if (!isAuthenticated) return;
     try {
-      await apiRequest('DELETE', `/api/squads/${id}/${deviceId}`);
+      await apiRequest('DELETE', `/api/squads/${id}`);
       setSquads(prev => prev.filter(s => s.id !== id));
     } catch (e) {
       console.error('Failed to leave squad:', e);
     }
-  }, [deviceId]);
+  }, [isAuthenticated]);
 
   const getDayNumber = useCallback((): number => {
     if (!contract) return 0;
@@ -323,16 +305,16 @@ export function RigorProvider({ children }: { children: ReactNode }) {
   }, [dayRecords]);
 
   const resetAll = useCallback(async () => {
-    if (!deviceId) return;
+    if (!isAuthenticated) return;
     try {
-      await apiRequest('DELETE', `/api/reset/${deviceId}`);
+      await apiRequest('DELETE', '/api/reset');
       setContract(null);
       setDayRecords([]);
       setSquads([]);
     } catch (e) {
       console.error('Failed to reset:', e);
     }
-  }, [deviceId]);
+  }, [isAuthenticated]);
 
   const value = useMemo(() => ({
     contract,
