@@ -131,6 +131,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error) throw error;
 
       if (data) {
+        const startDate = data.started_at ? String(data.started_at).split('T')[0] : data.started_at;
         res.json({
           contract: {
             id: data.id,
@@ -138,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             deadline_hour: data.deadline_hour,
             deadline_minute: data.deadline_minute,
             duration: data.duration_days,
-            start_date: data.started_at,
+            start_date: startDate,
             signed: true,
           }
         });
@@ -154,6 +155,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const db = createUserClient(req.accessToken!);
       const { rule, deadline_hour, deadline_minute, duration, start_date } = req.body;
+      const startDate = new Date(start_date + 'T00:00:00');
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + duration);
+      const ends_at = endDate.toISOString().split('T')[0];
+
       const { data, error } = await db
         .from("contracts")
         .insert({
@@ -163,12 +169,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deadline_minute,
           duration_days: duration,
           started_at: start_date,
+          ends_at,
           status: "active",
         })
         .select()
         .single();
 
       if (error) throw error;
+      const createdStartDate = data.started_at ? String(data.started_at).split('T')[0] : data.started_at;
       res.json({
         contract: {
           id: data.id,
@@ -176,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           deadline_hour: data.deadline_hour,
           deadline_minute: data.deadline_minute,
           duration: data.duration_days,
-          start_date: data.started_at,
+          start_date: createdStartDate,
           signed: true,
         }
       });
@@ -217,51 +225,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const db = createUserClient(req.accessToken!);
       const { contract_id, date, completed } = req.body;
 
-      const { data: existing } = await db
-        .from("day_records")
-        .select("id")
-        .eq("user_id", req.userId!)
-        .eq("date", date)
-        .maybeSingle();
+      const { data: rpcResult, error: rpcError } = await db
+        .rpc('mark_day_complete', { p_contract_id: contract_id });
 
-      if (existing) {
-        const { data, error } = await db
-          .from("day_records")
-          .update({ completed })
-          .eq("id", existing.id)
-          .select()
-          .single();
-        if (error) throw error;
-        res.json({
-          record: {
-            id: data.id,
-            contract_id: data.contract_id,
-            date: data.date,
-            completed: data.completed,
-            failed: !data.completed,
-            critical: false,
-            justification: null,
-          }
-        });
-      } else {
-        const { data, error } = await db
-          .from("day_records")
-          .insert({ user_id: req.userId!, contract_id, date, completed })
-          .select()
-          .single();
-        if (error) throw error;
-        res.json({
-          record: {
-            id: data.id,
-            contract_id: data.contract_id,
-            date: data.date,
-            completed: data.completed,
-            failed: !data.completed,
-            critical: false,
-            justification: null,
-          }
-        });
-      }
+      if (rpcError) throw rpcError;
+
+      const today = date || new Date().toISOString().split('T')[0];
+      res.json({
+        record: {
+          id: rpcResult?.record_id || Date.now().toString(),
+          contract_id,
+          date: today,
+          completed: true,
+          failed: false,
+          critical: false,
+          justification: null,
+        }
+      });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
