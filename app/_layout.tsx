@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { AuthProvider } from "@/lib/auth-context";
 import { RigorProvider } from "@/lib/rigor-context";
+import { I18nProvider } from "@/lib/i18n";
 import { useFonts, Rubik_400Regular, Rubik_500Medium, Rubik_600SemiBold, Rubik_700Bold, Rubik_800ExtraBold } from "@expo-google-fonts/rubik";
 
 SplashScreen.preventAutoHideAsync();
@@ -46,11 +47,13 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <GestureHandlerRootView>
           <KeyboardProvider>
-            <AuthProvider>
-              <RigorProvider>
-                <RootLayoutNav />
-              </RigorProvider>
-            </AuthProvider>
+            <I18nProvider>
+              <AuthProvider>
+                <RigorProvider>
+                  <RootLayoutNav />
+                </RigorProvider>
+              </AuthProvider>
+            </I18nProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>
       </QueryClientProvider>
