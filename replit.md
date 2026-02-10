@@ -43,7 +43,7 @@ Preferred communication style: Simple, everyday language.
 ### Data Layer
 
 - **Primary Storage**: Supabase (PostgreSQL) — contracts, day records, squads all managed through Supabase client on the server
-- **Schema Definition**: Drizzle ORM schema in `shared/schema.ts` with `drizzle-zod` for validation. Currently defines a `users` table but main app data (contracts, records, squads) is managed through Supabase directly
+- **Schema Definition**: Drizzle ORM schema in `shared/schema.ts` with `drizzle-zod` for validation. Supabase tables use `user_id` column (not `device_id`) to link data to authenticated users
 - **In-Memory Fallback**: `server/storage.ts` has a `MemStorage` class (likely legacy/placeholder)
 - **Drizzle Config**: Points to `DATABASE_URL` env var for PostgreSQL, migrations output to `./migrations/`
 

@@ -119,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { data, error } = await supabase
         .from("contracts")
         .select("*")
-        .eq("device_id", req.userId!)
+        .eq("user_id", req.userId!)
         .eq("signed", true)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -138,7 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { data, error } = await supabase
         .from("contracts")
         .insert({
-          device_id: req.userId!,
+          user_id: req.userId!,
           rule,
           deadline_hour,
           deadline_minute,
@@ -161,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { data, error } = await supabase
         .from("day_records")
         .select("*")
-        .eq("device_id", req.userId!)
+        .eq("user_id", req.userId!)
         .order("date", { ascending: true });
 
       if (error) throw error;
@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { data: existing } = await supabase
         .from("day_records")
         .select("id")
-        .eq("device_id", req.userId!)
+        .eq("user_id", req.userId!)
         .eq("date", date)
         .maybeSingle();
 
@@ -194,7 +194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         const { data, error } = await supabase
           .from("day_records")
-          .insert({ device_id: req.userId!, contract_id, date, completed, failed, critical, justification })
+          .insert({ user_id: req.userId!, contract_id, date, completed, failed, critical, justification })
           .select()
           .single();
         if (error) throw error;
@@ -210,7 +210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { data: memberships, error: memberError } = await supabase
         .from("squad_members")
         .select("squad_id")
-        .eq("device_id", req.userId!);
+        .eq("user_id", req.userId!);
 
       if (memberError) throw memberError;
 
@@ -244,7 +244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await supabase
         .from("squad_members")
-        .insert({ squad_id: squad.id, device_id: req.userId! });
+        .insert({ squad_id: squad.id, user_id: req.userId! });
 
       res.json({ squad });
     } catch (e: any) {
@@ -270,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from("squad_members")
         .select("id")
         .eq("squad_id", squad.id)
-        .eq("device_id", req.userId!)
+        .eq("user_id", req.userId!)
         .maybeSingle();
 
       if (existing) {
@@ -279,7 +279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await supabase
         .from("squad_members")
-        .insert({ squad_id: squad.id, device_id: req.userId! });
+        .insert({ squad_id: squad.id, user_id: req.userId! });
 
       res.json({ squad });
     } catch (e: any) {
@@ -294,7 +294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from("squad_members")
         .delete()
         .eq("squad_id", squadId)
-        .eq("device_id", req.userId!);
+        .eq("user_id", req.userId!);
 
       if (error) throw error;
       res.json({ success: true });
@@ -305,9 +305,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/reset", authMiddleware, async (req: Request, res: Response) => {
     try {
-      await supabase.from("day_records").delete().eq("device_id", req.userId!);
-      await supabase.from("squad_members").delete().eq("device_id", req.userId!);
-      await supabase.from("contracts").delete().eq("device_id", req.userId!);
+      await supabase.from("day_records").delete().eq("user_id", req.userId!);
+      await supabase.from("squad_members").delete().eq("user_id", req.userId!);
+      await supabase.from("contracts").delete().eq("user_id", req.userId!);
       res.json({ success: true });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
