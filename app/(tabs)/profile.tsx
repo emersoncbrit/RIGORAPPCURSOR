@@ -13,6 +13,7 @@ import { useI18n, Language } from "@/lib/i18n";
 
 const NOTIFICATIONS_KEY = "@rigor_notifications";
 const DIFFICULTY_KEY = "@rigor_difficulty";
+const RESET_COUNT_KEY = "@rigor_reset_count";
 
 export type Difficulty = "medium" | "hard" | "extreme";
 
@@ -32,13 +33,15 @@ Notifications.setNotificationHandler({
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
-  const { contract, getCompletedCount, getFailedCount, getCurrentStreak, getBestStreak, getCompletionRate, getDaysRemaining, resetAll } = useRigor();
+  const { contract, getCompletedCount, getFailedCount, getCurrentStreak, getBestStreak, getCompletionRate, getDaysRemaining, resetAll, resetProgress } = useRigor();
   const { user, logout } = useAuth();
   const { language, setLanguage, t } = useI18n();
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [showLanguage, setShowLanguage] = useState(false);
   const [showDifficulty, setShowDifficulty] = useState(false);
   const [difficulty, setDifficultyState] = useState<Difficulty>("medium");
+  const [resetCount, setResetCount] = useState(0);
+  const isPro = false;
 
   const completed = getCompletedCount();
   const failed = getFailedCount();
@@ -50,12 +53,20 @@ export default function ProfileScreen() {
   useEffect(() => {
     loadNotificationState();
     loadDifficulty();
+    loadResetCount();
   }, []);
 
   const loadNotificationState = async () => {
     try {
       const val = await AsyncStorage.getItem(NOTIFICATIONS_KEY);
       setNotificationsEnabled(val === "true");
+    } catch {}
+  };
+
+  const loadResetCount = async () => {
+    try {
+      const val = await AsyncStorage.getItem(RESET_COUNT_KEY);
+      if (val) setResetCount(parseInt(val, 10));
     } catch {}
   };
 
@@ -118,6 +129,37 @@ export default function ProfileScreen() {
       setNotificationsEnabled(false);
       await AsyncStorage.setItem(NOTIFICATIONS_KEY, "false");
     }
+  };
+
+  const canResetProgress = isPro || resetCount < 1;
+
+  const handleResetProgress = () => {
+    if (!canResetProgress) {
+      Alert.alert(t.profile.resetProgressTitle, (t.profile as any).noResetsLeft);
+      return;
+    }
+    Alert.alert(
+      (t.profile as any).resetProgressTitle,
+      (t.profile as any).resetProgressMessage,
+      [
+        { text: t.profile.cancel, style: "cancel" },
+        {
+          text: (t.profile as any).resetProgressConfirm,
+          style: "destructive",
+          onPress: async () => {
+            const success = await resetProgress();
+            if (success && !isPro) {
+              const newCount = resetCount + 1;
+              setResetCount(newCount);
+              await AsyncStorage.setItem(RESET_COUNT_KEY, newCount.toString());
+            }
+            if (success && Platform.OS !== "web") {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleReset = () => {
@@ -275,6 +317,28 @@ export default function ProfileScreen() {
         <Feather name="info" size={18} color={Colors.light.text} />
         <Text style={styles.settingText}>{t.profile.aboutRigor}</Text>
         <Feather name="chevron-right" size={16} color={Colors.light.textTertiary} />
+      </Pressable>
+
+      <Pressable
+        style={({ pressed }) => [styles.resetProgressRow, pressed && { opacity: 0.7 }, !canResetProgress && styles.resetProgressDisabled]}
+        onPress={handleResetProgress}
+        testID="reset-progress-button"
+      >
+        <View style={styles.resetProgressIcon}>
+          <Ionicons name="refresh" size={20} color={canResetProgress ? Colors.light.error : Colors.light.textTertiary} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.resetProgressTitle, !canResetProgress && { color: Colors.light.textTertiary }]}>
+            {(t.profile as any).resetProgress}
+          </Text>
+          <Text style={styles.resetProgressSub}>
+            {isPro
+              ? (t.profile as any).resetProgressPro
+              : resetCount >= 1
+                ? (t.profile as any).resetProgressUsed
+                : (t.profile as any).resetProgressFree}
+          </Text>
+        </View>
       </Pressable>
 
       <Pressable
@@ -616,11 +680,49 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: Colors.light.error,
   },
+  resetProgressRow: {
+    flexDirection: "row" as const,
+    alignItems: "center" as const,
+    backgroundColor: Colors.light.surface,
+    marginHorizontal: 20,
+    borderRadius: 14,
+    padding: 16,
+    marginTop: 8,
+    marginBottom: 8,
+    gap: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  resetProgressDisabled: {
+    opacity: 0.5,
+  },
+  resetProgressIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFF0F0",
+    alignItems: "center" as const,
+    justifyContent: "center" as const,
+  },
+  resetProgressTitle: {
+    fontFamily: "Rubik_600SemiBold",
+    fontSize: 15,
+    color: Colors.light.text,
+  },
+  resetProgressSub: {
+    fontFamily: "Rubik_400Regular",
+    fontSize: 13,
+    color: Colors.light.textTertiary,
+    marginTop: 2,
+  },
   version: {
     fontFamily: "Rubik_400Regular",
     fontSize: 12,
     color: Colors.light.textTertiary,
-    textAlign: "center",
+    textAlign: "center" as const,
     marginTop: 24,
   },
   modalOverlay: {
