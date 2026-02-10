@@ -332,6 +332,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/squads/:squadId/members", authMiddleware, async (req: Request, res: Response) => {
+    try {
+      const db = createUserClient(req.accessToken!);
+      const { squadId } = req.params;
+
+      const { data: myMembership } = await db
+        .from("squad_members")
+        .select("id")
+        .eq("squad_id", squadId)
+        .eq("user_id", req.userId!)
+        .maybeSingle();
+
+      if (!myMembership) {
+        return res.status(403).json({ error: "Not a member of this squad" });
+      }
+
+      const { data: members, error: membersError } = await db
+        .from("squad_members")
+        .select("user_id, joined_at")
+        .eq("squad_id", squadId);
+
+      if (membersError) throw membersError;
+
+      const memberStats = await Promise.all(
+        (members || []).map(async (m: any) => {
+          let completedDays = 0;
+          let failedDays = 0;
+          let displayName = "Membro";
+
+          try {
+            const { data: records } = await db
+              .from("day_records")
+              .select("completed")
+              .eq("user_id", m.user_id);
+
+            if (records) {
+              completedDays = records.filter((r: any) => r.completed).length;
+              failedDays = records.filter((r: any) => !r.completed).length;
+            }
+          } catch {}
+
+          if (m.user_id === req.userId) {
+            try {
+              const { data: { user } } = await supabase.auth.getUser(req.accessToken!);
+              if (user?.email) {
+                displayName = user.email.split("@")[0];
+              }
+            } catch {}
+          }
+
+          return {
+            user_id: m.user_id,
+            display_name: displayName,
+            is_me: m.user_id === req.userId,
+            completed_days: completedDays,
+            failed_days: failedDays,
+            joined_at: m.joined_at,
+          };
+        })
+      );
+
+      memberStats.sort((a, b) => b.completed_days - a.completed_days);
+
+      res.json({ members: memberStats });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   app.delete("/api/squads/:squadId", authMiddleware, async (req: Request, res: Response) => {
     try {
       const db = createUserClient(req.accessToken!);
