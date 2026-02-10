@@ -19,6 +19,7 @@ function RootLayoutNav() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="create-contract" options={{ headerShown: false, presentation: "modal" }} />
       <Stack.Screen name="about" options={{ headerShown: false, presentation: "modal" }} />
+      <Stack.Screen name="share-card" options={{ headerShown: false, presentation: "modal" }} />
     </Stack>
   );
 }

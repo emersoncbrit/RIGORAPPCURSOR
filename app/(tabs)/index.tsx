@@ -80,7 +80,7 @@ export default function TodayScreen() {
         <View style={styles.dayBadge}>
           <Text style={styles.dayBadgeText}>DAY {dayNumber}</Text>
         </View>
-        <Pressable style={styles.headerIcon}>
+        <Pressable style={styles.headerIcon} onPress={() => router.push('/share-card')}>
           <Feather name="download" size={20} color={Colors.light.text} />
         </Pressable>
       </View>
