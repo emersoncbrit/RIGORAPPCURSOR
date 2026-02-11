@@ -44,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const baseUrl = getApiUrl();
         const res = await fetch(new URL('/api/auth/me', baseUrl).toString(), {
           headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
         });
 
         if (res.ok) {
@@ -56,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ refresh_token: refreshToken }),
+              credentials: "include",
             });
             if (refreshRes.ok) {
               const refreshData = await refreshRes.json();
@@ -105,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
+        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error || 'Login failed' };
@@ -124,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, username }),
+        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error || 'Signup failed' };
@@ -147,6 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
+        credentials: "include",
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error || 'Failed to send reset email' };
@@ -164,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await fetch(new URL('/api/auth/logout', baseUrl).toString(), {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` },
+          credentials: "include",
         });
       }
     } catch (e) {}

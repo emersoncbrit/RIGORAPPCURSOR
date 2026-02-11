@@ -14,7 +14,7 @@ const LAST_CHECK_KEY = "@rigor_last_failure_check";
 
 export default function TodayScreen() {
   const insets = useSafeAreaInsets();
-  const { contract, markDone, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getDaysRemaining, getCurrentDeadline, isTodayCompleted, dayRecords } = useRigor();
+  const { contract, markDone, getDayNumber, getCompletedCount, getFailedCount, getCurrentStreak, getDaysRemaining, getCurrentDeadline, isTodayCompleted, dayRecords, refreshData } = useRigor();
   const { t, language } = useI18n();
   const [currentTime, setCurrentTime] = useState(new Date());
   const buttonScale = useSharedValue(1);
@@ -30,6 +30,12 @@ export default function TodayScreen() {
     checkFailure();
   }, [contract, dayRecords, currentTime]);
 
+  // Save / sync progress when contract loop ends (0 days remaining)
+  useEffect(() => {
+    if (!contract) return;
+    if (getDaysRemaining() === 0) refreshData();
+  }, [contract, dayRecords]);
+
   const checkFailure = async () => {
     if (!contract) return;
     if (showFailureModal) return;
@@ -44,26 +50,28 @@ export default function TodayScreen() {
     if (todayStr < contractStart) return;
 
     const todayRecord = dayRecords.find((r) => r.date === todayStr);
-    if (todayRecord) return;
-
     const dl = getCurrentDeadline();
     const deadlineMinutes = dl.hour * 60 + dl.minute;
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const isAfterDeadline = nowMinutes >= deadlineMinutes;
 
-    if (nowMinutes >= deadlineMinutes) {
-      setShowFailureModal(true);
-      return;
-    }
+    // Trigger failure modal only after today's deadline has passed
+    if (!isAfterDeadline) return;
 
+    if (todayRecord) return;
+
+    // After deadline: today not done -> show "new day" modal; or yesterday not done -> show modal
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split("T")[0];
-    if (yesterdayStr < contractStart) return;
-
-    const yesterdayRecord = dayRecords.find((r) => r.date === yesterdayStr);
-    if (!yesterdayRecord) {
-      setShowFailureModal(true);
+    if (yesterdayStr >= contractStart) {
+      const yesterdayRecord = dayRecords.find((r) => r.date === yesterdayStr);
+      if (!yesterdayRecord) {
+        setShowFailureModal(true);
+        return;
+      }
     }
+    setShowFailureModal(true);
   };
 
   const handleFailureResponse = async (completed: boolean) => {

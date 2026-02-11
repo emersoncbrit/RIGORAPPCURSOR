@@ -108,7 +108,11 @@ export default function ProfileScreen() {
         finalStatus = status;
       }
       if (finalStatus !== "granted") {
-        Alert.alert(t.profile.permissionNeeded, t.profile.permissionMessage);
+        if (Platform.OS === "web") {
+          window.alert([t.profile.permissionNeeded, t.profile.permissionMessage].filter(Boolean).join("\n"));
+        } else {
+          Alert.alert(t.profile.permissionNeeded, t.profile.permissionMessage);
+        }
         return;
       }
 
@@ -137,9 +141,28 @@ export default function ProfileScreen() {
 
   const canResetProgress = isPro || resetCount < 1;
 
+  const runResetProgress = async () => {
+    const success = await resetProgress();
+    if (success && !isPro) {
+      const newCount = resetCount + 1;
+      setResetCount(newCount);
+      await AsyncStorage.setItem(RESET_COUNT_KEY, newCount.toString());
+    }
+    if (success && Platform.OS !== "web") {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+  };
+
   const handleResetProgress = () => {
+    if (typeof __DEV__ !== "undefined" && __DEV__) console.log("[Profile] Reset progress button pressed");
     if (!canResetProgress) {
       setShowProModal(true);
+      return;
+    }
+    if (Platform.OS === "web") {
+      if (window.confirm((t.profile as any).resetProgressMessage || "Reset progress?")) {
+        runResetProgress();
+      }
       return;
     }
     Alert.alert(
@@ -147,43 +170,43 @@ export default function ProfileScreen() {
       (t.profile as any).resetProgressMessage,
       [
         { text: t.profile.cancel, style: "cancel" },
-        {
-          text: (t.profile as any).resetProgressConfirm,
-          style: "destructive",
-          onPress: async () => {
-            const success = await resetProgress();
-            if (success && !isPro) {
-              const newCount = resetCount + 1;
-              setResetCount(newCount);
-              await AsyncStorage.setItem(RESET_COUNT_KEY, newCount.toString());
-            }
-            if (success && Platform.OS !== "web") {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-          },
-        },
+        { text: (t.profile as any).resetProgressConfirm, style: "destructive", onPress: runResetProgress },
       ]
     );
   };
 
   const handleReset = () => {
+    if (typeof __DEV__ !== "undefined" && __DEV__) console.log("[Profile] Reset all button pressed");
+    if (Platform.OS === "web") {
+      if (window.confirm(t.profile.resetMessage || "Delete all data?")) {
+        resetAll();
+      }
+      return;
+    }
     Alert.alert(
       t.profile.resetTitle,
       t.profile.resetMessage,
       [
         { text: t.profile.cancel, style: "cancel" },
-        { text: t.profile.reset, style: "destructive", onPress: resetAll },
+        { text: t.profile.reset, style: "destructive", onPress: () => { console.log("[Profile] Reset confirmed"); resetAll(); } },
       ]
     );
   };
 
   const handleLogout = () => {
+    if (typeof __DEV__ !== "undefined" && __DEV__) console.log("[Profile] Sign out button pressed");
+    if (Platform.OS === "web") {
+      if (window.confirm(t.profile.signOutConfirm || "Sign out?")) {
+        logout();
+      }
+      return;
+    }
     Alert.alert(
       t.profile.signOut,
       t.profile.signOutConfirm,
       [
         { text: t.profile.cancel, style: "cancel" },
-        { text: t.profile.signOut, style: "destructive", onPress: logout },
+        { text: t.profile.signOut, style: "destructive", onPress: () => { console.log("[Profile] Logout confirmed"); logout(); } },
       ]
     );
   };
@@ -206,7 +229,9 @@ export default function ProfileScreen() {
             <Feather name="user" size={22} color={Colors.light.primary} />
           </View>
           <View style={styles.userInfo}>
-            {user?.username && <Text style={styles.userName} numberOfLines={1}>{user.username}</Text>}
+            <Text style={styles.userName} numberOfLines={1}>
+              {user?.username || (user?.email ? user.email.split("@")[0] : "") || "User"}
+            </Text>
             <Text style={styles.userEmail} numberOfLines={1}>{user?.email ?? ""}</Text>
           </View>
         </View>

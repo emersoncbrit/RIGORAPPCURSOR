@@ -5,15 +5,23 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const AUTH_TOKEN_KEY = '@rigor_auth_token';
 
 export function getApiUrl(): string {
-  let host = process.env.EXPO_PUBLIC_DOMAIN;
-
-  if (!host) {
-    throw new Error("EXPO_PUBLIC_DOMAIN is not set");
+  // Full URL takes precedence (e.g. https://api.example.com)
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (apiUrl) {
+    return apiUrl.replace(/\/$/, "");
   }
 
-  let url = new URL(`https://${host}`);
+  const host = process.env.EXPO_PUBLIC_DOMAIN;
+  if (!host) {
+    throw new Error("EXPO_PUBLIC_DOMAIN or EXPO_PUBLIC_API_URL must be set");
+  }
 
-  return url.href;
+  // Use http for local development (localhost / 127.0.0.1)
+  const isLocal =
+    host.startsWith("localhost") || host.startsWith("127.0.0.1");
+  const protocol = isLocal ? "http" : "https";
+  const url = new URL(`${protocol}://${host}`);
+  return url.href.replace(/\/$/, "");
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {
