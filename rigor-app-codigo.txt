@@ -1,0 +1,123 @@
+# rigor-app-codigo.txt
+
+---
+
+## app/
+
+### _layout.tsx
+[Conteúdo]
+(import { QueryClientProvider } ...)
+
+### about.tsx
+[Conteúdo]
+(import React from "react"; ...)
+
+### create-contract.tsx
+[Conteúdo]
+(import React, { useState } ...)
+
+### share-card.tsx
+[Conteúdo]
+(import React, { useRef, useCallback } ...)
+
+### +native-intent.tsx
+[Conteúdo]
+(export function redirectSystemPath ...)
+
+### +not-found.tsx
+[Conteúdo]
+(// template ...)
+
+---
+
+## components/
+
+### ErrorBoundary.tsx
+[Conteúdo]
+(import React, { Component, ComponentType, PropsWithChildren } ...)
+
+### ErrorFallback.tsx
+[Conteúdo]
+(import React, { useState } ...)
+
+### KeyboardAwareScrollViewCompat.tsx
+[Conteúdo]
+(// template ...)
+
+### ProUpgradeModal.tsx
+[Conteúdo]
+(import React, { useState } ...)
+
+---
+
+## lib/
+
+### auth-context.tsx
+[Conteúdo]
+(import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } ...)
+
+### i18n.tsx
+[Conteúdo]
+(import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } ...)
+
+### query-client.ts
+[Conteúdo]
+(import { fetch } from "expo/fetch"; ...)
+
+### rigor-context.tsx
+[Conteúdo]
+(import React, { createContext, useContext, useState, useEffect, useMemo, ReactNode, useCallback } ...)
+
+---
+
+## server/
+
+### index.ts
+[Conteúdo]
+(import "dotenv/config"; ...)
+
+### routes.ts
+[Conteúdo]
+(import type { Express, Request, Response, NextFunction } ...)
+
+### supabase.ts
+[Conteúdo]
+(import { createClient, SupabaseClient } ...)
+
+---
+
+## shared/
+
+### schema.ts
+[Conteúdo]
+(import { sql } from "drizzle-orm"; ...)
+
+---
+
+## scripts/
+
+### build.js
+[Conteúdo]
+(const fs = require("fs"); ...)
+
+---
+
+## constants/
+
+### colors.ts
+[Conteúdo]
+(const orange = "#E8611A"; ...)
+
+---
+
+## docs/
+
+### CONFIG.md
+[Conteúdo]
+(# Configuração do projeto RIGOR ...)
+
+---
+
+# FIM
+
+Obs: Cada arquivo está identificado por pasta e nome, com o conteúdo completo entre colchetes. Binários e node_modules foram ignorados para agilizar.

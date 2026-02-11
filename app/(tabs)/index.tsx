@@ -139,87 +139,73 @@ export default function TodayScreen() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: Platform.OS === 'web' ? 67 : insets.top }]}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>RIGOR</Text>
-        <View style={styles.dayBadge}>
-          <Text style={styles.dayBadgeText}>{t.today.day} {dayNumber}</Text>
-        </View>
-        <Pressable style={styles.headerIcon} onPress={() => router.push('/share-card')}>
-          <Feather name="download" size={20} color={Colors.light.text} />
-        </Pressable>
-      </View>
+    <main role="main" aria-label="Rigor Today" style={{ flex: 1, background: Colors.light.background, minHeight: '100vh', paddingTop: Platform.OS === 'web' ? 67 : insets.top }}>
+      <header style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', padding: '24px 32px', justifyContent: 'space-between', background: Colors.light.surface, borderBottom: `1px solid ${Colors.light.border}` }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <img src="/assets/images/logo.png" alt="RIGOR Logo" style={{ height: 40, marginRight: 16 }} />
+          <span style={{ fontFamily: 'Rubik_800ExtraBold', fontSize: 28, color: Colors.light.primary, letterSpacing: 2 }}>RIGOR</span>
+        </div>
+        <span style={{ fontFamily: 'Rubik_700Bold', fontSize: 16, color: Colors.light.textSecondary }}>{t.today.day} {dayNumber}</span>
+        <button aria-label="Share Card" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 8 }} onClick={() => router.push('/share-card')}>
+          <Feather name="download" size={24} color={Colors.light.text} />
+        </button>
+      </header>
 
-      <View style={styles.card}>
-        <Text style={styles.dateLabel}>{dayOfMonth} {dayName}</Text>
-        <Text style={styles.clock}>{hours}:{minutes}</Text>
+      <section style={{ maxWidth: 600, margin: '40px auto', background: Colors.light.surface, borderRadius: 24, boxShadow: Colors.light.cardShadow, padding: 40, display: 'flex', flexDirection: 'column', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontFamily: 'Rubik_400Regular', fontSize: 18, color: Colors.light.textSecondary }}>{dayOfMonth} {dayName}</span>
+          <span style={{ fontFamily: 'Rubik_700Bold', fontSize: 48, color: Colors.light.text, letterSpacing: -2 }}>{hours}:{minutes}</span>
+        </div>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{completed}</Text>
-            <Text style={styles.statLabel}>{t.today.completed}</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{failed}</Text>
-            <Text style={styles.statLabel}>{t.today.failed}</Text>
-          </View>
-        </View>
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 48, justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontFamily: 'Rubik_700Bold', fontSize: 28, color: Colors.light.text }}>{completed}</span>
+            <div style={{ fontFamily: 'Rubik_500Medium', fontSize: 12, color: Colors.light.textTertiary }}>{t.today.completed}</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <span style={{ fontFamily: 'Rubik_700Bold', fontSize: 28, color: Colors.light.text }}>{failed}</span>
+            <div style={{ fontFamily: 'Rubik_500Medium', fontSize: 12, color: Colors.light.textTertiary }}>{t.today.failed}</div>
+          </div>
+        </div>
 
-        <View style={styles.progressBarContainer}>
-          <View style={[styles.progressBarFill, { width: `${Math.min(progress * 100, 100)}%` }]} />
-        </View>
+        <div aria-label="Progress Bar" style={{ height: 10, background: Colors.light.progressBg, borderRadius: 5, overflow: 'hidden', marginBottom: 16 }}>
+          <div style={{ height: '100%', background: Colors.light.progressFill, width: `${Math.min(progress * 100, 100)}%`, borderRadius: 5 }} />
+        </div>
 
-        <View style={styles.divider} />
+        <hr style={{ border: 'none', borderTop: `1px solid ${Colors.light.borderLight}`, margin: '24px 0' }} />
 
-        <Text style={styles.ruleText}>{contract.rule} {t.today.before} {deadlineStr}</Text>
+        <div style={{ fontFamily: 'Rubik_400Regular', fontSize: 18, color: Colors.light.text, marginBottom: 12 }}>{contract.rule} {t.today.before} {deadlineStr}</div>
 
-        <View style={styles.metaRow}>
-          <Text style={styles.metaText}>{remaining}d {t.today.remaining}</Text>
-          <Text style={styles.metaText}>{t.today.streak}: {streak}</Text>
-          <Text style={styles.noReturn}>{t.today.noReturn}</Text>
-        </View>
-      </View>
+        <div style={{ display: 'flex', flexDirection: 'row', gap: 24, alignItems: 'center', justifyContent: 'center' }}>
+          <span style={{ fontFamily: 'Rubik_400Regular', fontSize: 16, color: Colors.light.textTertiary }}>{remaining}d {t.today.remaining}</span>
+          <span style={{ fontFamily: 'Rubik_400Regular', fontSize: 16, color: Colors.light.textTertiary }}>{t.today.streak}: {streak}</span>
+          <span style={{ fontFamily: 'Rubik_600SemiBold', fontSize: 16, color: Colors.light.primary }}>{t.today.noReturn}</span>
+        </div>
 
-      {todayDone ? (
-        <Text style={styles.dayCompleted}>{t.today.dayCompleted}</Text>
-      ) : (
-        <Animated.View style={buttonAnimStyle}>
-          <Pressable
-            style={({ pressed }) => [styles.doneButton, pressed && { opacity: 0.9 }]}
-            onPress={handleDone}
-          >
-            <Text style={styles.doneButtonText}>{t.today.done}</Text>
-          </Pressable>
-        </Animated.View>
-      )}
+        {todayDone ? (
+          <div style={{ fontFamily: 'Rubik_400Regular', fontSize: 18, color: Colors.light.textTertiary, textAlign: 'center', marginTop: 32 }}>{t.today.dayCompleted}</div>
+        ) : (
+          <Animated.View style={buttonAnimStyle}>
+            <button aria-label="Mark as Done" style={{ background: Colors.light.primary, color: '#fff', fontFamily: 'Rubik_700Bold', fontSize: 20, borderRadius: 16, padding: '18px 0', margin: '24px 0', width: '100%', border: 'none', cursor: 'pointer', transition: 'opacity 0.2s' }} onClick={handleDone}>
+              {t.today.done}
+            </button>
+          </Animated.View>
+        )}
+      </section>
 
       <Modal visible={showFailureModal} animationType="fade" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.failureModal}>
-            <Text style={styles.failureLogo}>RIGOR</Text>
-
-            <Text style={styles.failureTitle}>{(t.today as any).newDay}</Text>
-            <Text style={styles.failureQuestion}>{(t.today as any).newDayQuestion}</Text>
-
-            <Pressable
-              style={({ pressed }) => [styles.failureYesButton, pressed && { opacity: 0.9 }]}
-              onPress={() => handleFailureResponse(true)}
-            >
-              <Text style={styles.failureYesText}>{(t.today as any).yesCompleted}</Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [styles.failureNoButton, pressed && { opacity: 0.9 }]}
-              onPress={() => handleFailureResponse(false)}
-            >
-              <Text style={styles.failureNoText}>{(t.today as any).noFailed}</Text>
-            </Pressable>
-
-            <Text style={styles.failureHint}>{(t.today as any).beHonest}</Text>
-          </View>
-        </View>
+        <div role="dialog" aria-modal="true" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'rgba(0,0,0,0.5)', position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 1000 }}>
+          <div style={{ background: Colors.light.surface, borderRadius: 24, padding: 40, width: 400, maxWidth: '90vw', alignItems: 'center', border: `3px solid ${Colors.light.primary}` }}>
+            <span style={{ fontFamily: 'Rubik_800ExtraBold', fontSize: 28, color: Colors.light.primary, letterSpacing: 2, marginBottom: 20 }}>RIGOR</span>
+            <div style={{ fontFamily: 'Rubik_700Bold', fontSize: 24, color: Colors.light.text, marginBottom: 8 }}>{(t.today as any).newDay}</div>
+            <div style={{ fontFamily: 'Rubik_400Regular', fontSize: 16, color: Colors.light.textSecondary, textAlign: 'center', marginBottom: 24, lineHeight: 22 }}>{(t.today as any).newDayQuestion}</div>
+            <button aria-label="Yes, Completed" style={{ background: Colors.light.primary, color: '#fff', fontFamily: 'Rubik_700Bold', fontSize: 18, borderRadius: 14, padding: '18px 0', width: '100%', border: 'none', marginBottom: 12, cursor: 'pointer' }} onClick={() => handleFailureResponse(true)}>{(t.today as any).yesCompleted}</button>
+            <button aria-label="No, Failed" style={{ background: Colors.light.surface, color: Colors.light.text, fontFamily: 'Rubik_600SemiBold', fontSize: 16, borderRadius: 14, padding: '18px 0', width: '100%', border: `1.5px solid ${Colors.light.border}`, marginBottom: 16, cursor: 'pointer' }} onClick={() => handleFailureResponse(false)}>{(t.today as any).noFailed}</button>
+            <div style={{ fontFamily: 'Rubik_400Regular', fontSize: 14, color: Colors.light.textTertiary, textAlign: 'center' }}>{(t.today as any).beHonest}</div>
+          </div>
+        </div>
       </Modal>
-    </View>
+    </main>
   );
 }
 
