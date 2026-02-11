@@ -6,6 +6,7 @@ import { fetch } from 'expo/fetch';
 export interface User {
   id: string;
   email: string;
+  username?: string;
 }
 
 interface AuthContextValue {
@@ -13,7 +14,7 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<{ error?: string }>;
-  signup: (email: string, password: string) => Promise<{ error?: string; confirmEmail?: boolean }>;
+  signup: (email: string, password: string, username?: string) => Promise<{ error?: string; confirmEmail?: boolean }>;
   forgotPassword: (email: string) => Promise<{ error?: string }>;
   logout: () => Promise<void>;
 }
@@ -116,13 +117,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (email: string, password: string): Promise<{ error?: string; confirmEmail?: boolean }> => {
+  const signup = useCallback(async (email: string, password: string, username?: string): Promise<{ error?: string; confirmEmail?: boolean }> => {
     try {
       const baseUrl = getApiUrl();
       const res = await fetch(new URL('/api/auth/signup', baseUrl).toString(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, username }),
       });
       const data = await res.json();
       if (!res.ok) return { error: data.error || 'Signup failed' };

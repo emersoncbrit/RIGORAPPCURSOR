@@ -11,7 +11,8 @@ import { useI18n } from "@/lib/i18n";
 export default function SignupScreen() {
   const insets = useSafeAreaInsets();
   const { signup } = useAuth();
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -20,8 +21,14 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [confirmEmailSent, setConfirmEmailSent] = useState(false);
 
+  const isUsernameValid = username.trim().length >= 3 && /^[a-zA-Z0-9_]+$/.test(username.trim());
+
   const handleSignup = async () => {
-    if (!email.trim() || !password.trim()) return;
+    if (!username.trim() || !email.trim() || !password.trim()) return;
+    if (!isUsernameValid) {
+      setError(language === "pt" ? "Nome de usuário deve ter pelo menos 3 caracteres (letras, números, _)" : "Username must be at least 3 characters (letters, numbers, _)");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords don't match");
       return;
@@ -32,7 +39,7 @@ export default function SignupScreen() {
     }
     setError("");
     setLoading(true);
-    const result = await signup(email.trim(), password);
+    const result = await signup(email.trim(), password, username.trim());
     setLoading(false);
     if (result.error) {
       setError(result.error);
@@ -99,6 +106,21 @@ export default function SignupScreen() {
           )}
 
           <View style={styles.inputContainer}>
+            <Feather name="user" size={18} color={Colors.light.textTertiary} style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder={(t.auth as any).usernamePlaceholder}
+              placeholderTextColor={Colors.light.textTertiary}
+              value={username}
+              onChangeText={(text) => setUsername(text.replace(/[^a-zA-Z0-9_]/g, ""))}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={20}
+              testID="signup-username"
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
             <Feather name="mail" size={18} color={Colors.light.textTertiary} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
@@ -146,19 +168,23 @@ export default function SignupScreen() {
 
           <View style={styles.passwordRules}>
             <View style={styles.ruleRow}>
+              <Feather name={isUsernameValid ? "check-circle" : "circle"} size={14} color={isUsernameValid ? Colors.light.success : Colors.light.textTertiary} />
+              <Text style={[styles.ruleText, isUsernameValid && { color: Colors.light.success }]}>{language === "pt" ? "Nome de usuário válido (3+ caracteres)" : "Valid username (3+ characters)"}</Text>
+            </View>
+            <View style={styles.ruleRow}>
               <Feather name={password.length >= 6 ? "check-circle" : "circle"} size={14} color={password.length >= 6 ? Colors.light.success : Colors.light.textTertiary} />
-              <Text style={[styles.ruleText, password.length >= 6 && { color: Colors.light.success }]}>At least 6 characters</Text>
+              <Text style={[styles.ruleText, password.length >= 6 && { color: Colors.light.success }]}>{language === "pt" ? "Pelo menos 6 caracteres" : "At least 6 characters"}</Text>
             </View>
             <View style={styles.ruleRow}>
               <Feather name={password === confirmPassword && password.length > 0 ? "check-circle" : "circle"} size={14} color={password === confirmPassword && password.length > 0 ? Colors.light.success : Colors.light.textTertiary} />
-              <Text style={[styles.ruleText, password === confirmPassword && password.length > 0 && { color: Colors.light.success }]}>Passwords match</Text>
+              <Text style={[styles.ruleText, password === confirmPassword && password.length > 0 && { color: Colors.light.success }]}>{language === "pt" ? "Senhas coincidem" : "Passwords match"}</Text>
             </View>
           </View>
 
           <Pressable
             style={({ pressed }) => [styles.loginButton, pressed && { opacity: 0.85 }, loading && { opacity: 0.6 }]}
             onPress={handleSignup}
-            disabled={loading || !email.trim() || !password.trim() || !confirmPassword.trim()}
+            disabled={loading || !username.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()}
             testID="signup-submit"
           >
             {loading ? (

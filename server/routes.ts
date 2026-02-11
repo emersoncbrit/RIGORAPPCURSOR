@@ -35,13 +35,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/auth/signup", async (req: Request, res: Response) => {
     try {
-      const { email, password } = req.body;
+      const { email, password, username } = req.body;
       const authClient = createAuthClient();
-      const { data, error } = await authClient.auth.signUp({ email, password });
+      const { data, error } = await authClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { username: username || email.split("@")[0] },
+        },
+      });
       if (error) return res.status(400).json({ error: error.message });
 
       res.json({
-        user: data.user ? { id: data.user.id, email: data.user.email } : null,
+        user: data.user ? {
+          id: data.user.id,
+          email: data.user.email,
+          username: data.user.user_metadata?.username || email.split("@")[0],
+        } : null,
         session: data.session,
         confirmEmail: !data.session,
       });
@@ -58,7 +68,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error) return res.status(400).json({ error: error.message });
 
       res.json({
-        user: { id: data.user.id, email: data.user.email },
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          username: data.user.user_metadata?.username || data.user.email?.split("@")[0],
+        },
         session: data.session,
       });
     } catch (e: any) {
@@ -94,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error || !user) {
         return res.status(401).json({ error: 'Invalid token' });
       }
-      res.json({ user: { id: user.id, email: user.email } });
+      res.json({ user: { id: user.id, email: user.email, username: user.user_metadata?.username || user.email?.split("@")[0] } });
     } catch (e: any) {
       res.status(401).json({ error: 'Invalid token' });
     }
@@ -359,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         (members || []).map(async (m: any) => {
           let completedDays = 0;
           let failedDays = 0;
-          let displayName = "Membro";
+          let displayName = "Member";
 
           try {
             const { data: records } = await db
@@ -376,7 +390,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (m.user_id === req.userId) {
             try {
               const { data: { user } } = await supabase.auth.getUser(req.accessToken!);
-              if (user?.email) {
+              if (user?.user_metadata?.username) {
+                displayName = user.user_metadata.username;
+              } else if (user?.email) {
                 displayName = user.email.split("@")[0];
               }
             } catch {}

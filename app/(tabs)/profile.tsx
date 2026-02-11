@@ -206,8 +206,8 @@ export default function ProfileScreen() {
             <Feather name="user" size={22} color={Colors.light.primary} />
           </View>
           <View style={styles.userInfo}>
+            {user?.username && <Text style={styles.userName} numberOfLines={1}>{user.username}</Text>}
             <Text style={styles.userEmail} numberOfLines={1}>{user?.email ?? ""}</Text>
-            <Text style={styles.userStatus}>{t.profile.active}</Text>
           </View>
         </View>
       </View>
@@ -497,15 +497,15 @@ const styles = StyleSheet.create({
   userInfo: {
     flex: 1,
   },
-  userEmail: {
-    fontFamily: "Rubik_600SemiBold",
-    fontSize: 15,
+  userName: {
+    fontFamily: "Rubik_700Bold",
+    fontSize: 16,
     color: Colors.light.text,
   },
-  userStatus: {
+  userEmail: {
     fontFamily: "Rubik_400Regular",
-    fontSize: 12,
-    color: Colors.light.success,
+    fontSize: 13,
+    color: Colors.light.textTertiary,
     marginTop: 2,
   },
   contractCard: {
