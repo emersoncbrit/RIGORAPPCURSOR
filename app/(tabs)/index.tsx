@@ -27,22 +27,37 @@ export default function TodayScreen() {
 
   useEffect(() => {
     if (!contract) return;
-    checkYesterdayFailure();
-  }, [contract, dayRecords]);
+    checkFailure();
+  }, [contract, dayRecords, currentTime]);
 
-  const checkYesterdayFailure = async () => {
+  const checkFailure = async () => {
     if (!contract) return;
-    const today = new Date();
-    const todayStr = today.toISOString().split("T")[0];
+    if (showFailureModal) return;
+
+    const now = new Date();
+    const todayStr = now.toISOString().split("T")[0];
 
     const lastCheck = await AsyncStorage.getItem(LAST_CHECK_KEY);
     if (lastCheck === todayStr) return;
 
-    const yesterday = new Date(today);
+    const contractStart = contract.start_date;
+    if (todayStr < contractStart) return;
+
+    const todayRecord = dayRecords.find((r) => r.date === todayStr);
+    if (todayRecord) return;
+
+    const dl = getCurrentDeadline();
+    const deadlineMinutes = dl.hour * 60 + dl.minute;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    if (nowMinutes >= deadlineMinutes) {
+      setShowFailureModal(true);
+      return;
+    }
+
+    const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split("T")[0];
-
-    const contractStart = contract.start_date;
     if (yesterdayStr < contractStart) return;
 
     const yesterdayRecord = dayRecords.find((r) => r.date === yesterdayStr);
