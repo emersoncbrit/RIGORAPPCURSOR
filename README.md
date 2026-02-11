@@ -24,9 +24,15 @@
 5. Para gerar o backup completo do código:
 	- Use o arquivo `rigor-codigo-completo.txt` (contém todo o código das pastas app, components, lib, constants).
 
-## Deploy
 
-Para deploy universal (Lovable AI, Render, Railway, etc.), siga os passos acima e utilize scripts de build e variáveis de ambiente conforme necessário.
+## Deploy na Vercel
+
+1. Gere o static-build (veja instruções acima).
+2. Certifique-se de que existe o arquivo `static-build/index.html` (já criado).
+3. O arquivo `vercel.json` já está configurado para direcionar `/` para `static-build/index.html`.
+4. Faça deploy pelo painel da Vercel ou CLI.
+
+Se aparecer erro 404, verifique se o static-build está presente e se o index.html está na pasta correta.
 
 ## Atualização no GitHub
 
