@@ -1,7 +1,6 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/static-build/index.html" }
-  ],
+{ "rewrites": [{ "source": "/(.*)", "destination": "/" }] }  ],
   "cleanUrls": true,
   "trailingSlash": false
 }
