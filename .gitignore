@@ -39,3 +39,4 @@ yarn-error.*
 .vercel
 
 .env
+.config/replit/.semgrep/semgrep_rules.json
